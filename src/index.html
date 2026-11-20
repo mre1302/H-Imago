@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>H-IMAGO · Inicio</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="pantalla-index">
+
+  <div id="pantalla-inicio">
+    <button type="button" class="btn btn-mini tema-toggle" data-tema-boton></button>
+    <header class="hero">
+      <div class="marca-logotipo">
+        <img class="logo-variante" data-logo-oscuro="assets/logo-himago-oscuro.png" data-logo-claro="assets/logo-himago-claro.png" alt="H-IMAGO">
+      </div>
+      <p class="lema">Prosopografía y análisis de redes sociales históricas</p>
+      <div id="estado-db" class="estado-db">
+        <span class="punto" id="estado-punto"></span>
+        <span class="texto" id="estado-texto">Comprobando conexión con la base de datos…</span>
+        <button class="btn btn-mini" id="btn-estado-config" type="button">Configuración</button>
+      </div>
+    </header>
+
+    <nav class="menu-principal" aria-label="Menú principal">
+      <button class="tarjeta" id="btn-crear" type="button">
+        <span class="tarjeta-titulo">Crear proyecto</span>
+        <span class="tarjeta-desc">Iniciar una nueva investigación</span>
+      </button>
+      <button class="tarjeta" id="btn-abrir" type="button">
+        <span class="tarjeta-titulo">Abrir proyecto</span>
+        <span class="tarjeta-desc">Continuar con los proyectos guardados</span>
+      </button>
+      <button class="tarjeta" id="btn-salir" type="button">
+        <span class="tarjeta-titulo">Salir</span>
+        <span class="tarjeta-desc">Cerrar la aplicación</span>
+      </button>
+    </nav>
+
+    <section id="panel-proyectos" class="panel-proyectos" hidden>
+      <div class="panel-cabecera">
+        <h2>Proyectos guardados</h2>
+        <button class="btn btn-mini" id="btn-importar" type="button">⤓ Importar proyecto…</button>
+      </div>
+      <div id="lista-proyectos" class="lista-proyectos"></div>
+    </section>
+
+    <footer class="pie">
+      H-IMAGO — Análisis de redes sociales históricas · Electron + SQLite/MySQL
+    </footer>
+  </div>
+
+  <div id="capa-modales"></div>
+  <div id="avisos" class="avisos" aria-live="polite"></div>
+
+  <script src="js/tema.js"></script>
+  <script src="js/comun.js"></script>
+  <script src="js/dialogo-config.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>

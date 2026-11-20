@@ -1,0 +1,104 @@
+{
+  "name": "h-imago",
+  "productName": "H-IMAGO",
+  "version": "0.0.28",
+  "description": "Análisis de documentación histórica, prosopografía histórica y análisis de redes sociales históricas",
+  "main": "main.js",
+  "author": {
+    "name": "Proyecto H-IMAGO",
+    "email": "contacto@h-imago.org"
+  },
+  "homepage": "https://h-imago.org",
+  "desktopName": "H-IMAGO",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron . --disable-dev-shm-usage",
+    "start:sin-sandbox": "electron . --disable-gpu --disable-dev-shm-usage --no-sandbox",
+    "datos:ejemplo": "node scripts/semilla-ejemplo.js",
+    "test": "node scripts/ejecutar-pruebas.js",
+    "check": "node scripts/verificar-sintaxis.js",
+    "lint": "node node_modules/eslint/bin/eslint.js .",
+    "verificar": "npm run lint && npm run check && npm test",
+    "dist": "node node_modules/electron-builder/cli.js --linux AppImage deb",
+    "dist:dir": "node node_modules/electron-builder/cli.js --linux dir",
+    "dist:win": "node node_modules/electron-builder/cli.js --win nsis --x64"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0",
+    "node-sqlite3-wasm": "^0.8.61"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^10.13.0",
+    "globals": "^15.15.0",
+    "jsdom": "^26.1.0"
+  },
+  "build": {
+    "appId": "org.himago.app",
+    "productName": "H-IMAGO",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "db/**/*",
+      "lib/**/*",
+      "build/**/*",
+      "package.json"
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeCliInspectArguments": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "onlyLoadAppFromAsar": true,
+      "enableEmbeddedAsarIntegrityValidation": true
+    },
+    "asarUnpack": [
+      "db/sqlite-worker.js",
+      "node_modules/node-sqlite3-wasm/**/*"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education",
+      "icon": "build/icon.png",
+      "syncDesktopName": true,
+      "maintainer": "Proyecto H-IMAGO <contacto@h-imago.org>",
+      "synopsis": "Análisis de documentación histórica y redes sociales históricas",
+      "description": "H-IMAGO: prosopografía histórica, documentación y análisis de redes sociales históricas."
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "H-IMAGO-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "H-IMAGO",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
+  }
+}

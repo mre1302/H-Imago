@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; script-src 'self'; connect-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>H-IMAGO · Proyecto</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="pantalla-proyecto">
+
+  <header id="barra">
+    <div class="marca-mini">
+      <img class="marca-logo" data-logo-oscuro="assets/marca-himago-oscuro.webp" data-logo-claro="assets/marca-himago-claro.webp" alt="H-IMAGO">
+    </div>
+    <div id="titulo-proyecto" class="titulo-proyecto">…</div>
+    <div class="acciones-barra">
+      <button class="btn btn-mini icono-cambios sin-cambios" id="btn-cambios" type="button" title="Sin cambios pendientes" aria-label="Estado de cambios"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      <button class="btn btn-mini" id="btn-deshacer" type="button" title="Deshacer último cambio (Ctrl+Z)" aria-label="Deshacer último cambio" disabled>↶</button>
+      <button class="btn btn-primario" id="btn-guardar" type="button" title="Guardar proyecto (Ctrl+S)">Guardar proyecto</button>
+      <button class="btn" id="btn-inicio" type="button">Volver al inicio</button>
+      <button type="button" class="btn btn-mini tema-toggle" data-tema-boton></button>
+      <button class="btn btn-mini" id="btn-config" type="button" title="Configuración de la base de datos">⚙ Configuración</button>
+    </div>
+  </header>
+
+  <div class="cuerpo-proyecto">
+    <nav id="menu" aria-label="Secciones del proyecto">
+      <div class="menu-grupo">Análisis</div>
+      <button class="item-menu" data-seccion="grafo" type="button">
+        <span class="item-nombre">Vista de grafo</span>
+        <span class="cuenta" data-cuenta="relaciones"></span>
+      </button>
+      <button class="item-menu" data-seccion="geo" type="button">
+        <span class="item-nombre">Georreferenciador</span>
+        <span class="cuenta" data-cuenta="geolocalizados"></span>
+      </button>
+      <button class="item-menu" data-seccion="busqueda" type="button">
+        <span class="item-nombre">Búsqueda general</span>
+        <span class="cuenta" data-cuenta="busqueda"></span>
+      </button>
+      <div class="menu-grupo">Entidades</div>
+      <button class="item-menu" data-seccion="persona" type="button">
+        <span class="item-nombre">Personas</span>
+        <span class="cuenta" data-cuenta="personas"></span>
+      </button>
+      <button class="item-menu" data-seccion="institucion" type="button">
+        <span class="item-nombre">Instituciones</span>
+        <span class="cuenta" data-cuenta="instituciones"></span>
+      </button>
+      <button class="item-menu" data-seccion="lugar" type="button">
+        <span class="item-nombre">Lugares</span>
+        <span class="cuenta" data-cuenta="lugares"></span>
+      </button>
+      <button class="item-menu" data-seccion="patrimonio" type="button">
+        <span class="item-nombre">Patrimonios</span>
+        <span class="cuenta" data-cuenta="patrimonios"></span>
+      </button>
+      <div class="menu-grupo">Registros</div>
+      <button class="item-menu" data-seccion="fuente" type="button">
+        <span class="item-nombre">Fuentes</span>
+        <span class="cuenta" data-cuenta="fuentes"></span>
+      </button>
+    </nav>
+
+    <main id="contenido"></main>
+  </div>
+
+  <div id="capa-modales"></div>
+  <div id="avisos" class="avisos" aria-live="polite"></div>
+  <div id="zona-impresion" aria-hidden="true"></div>
+
+  <script src="js/tema.js"></script>
+  <script src="js/comun.js"></script>
+  <script src="js/dialogo-config.js"></script>
+  <script src="js/modulos/taxonomia-relaciones.js"></script>
+  <script src="js/modulos/taxonomia-fuentes.js"></script>
+  <script src="js/modulos/taxonomia-bloques.js"></script>
+  <script src="js/modulos/fecha-historica.js"></script>
+  <script src="js/modulos/entidades.js"></script>
+  <script src="js/modulos/grafo.js"></script>
+  <script src="js/modulos/geo.js"></script>
+  <script src="js/modulos/busqueda.js"></script>
+  <script src="js/proyecto.js"></script>
+</body>
+</html>
