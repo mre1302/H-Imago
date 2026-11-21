@@ -442,6 +442,17 @@ src/
   vendor/leaflet/        Copia local de Leaflet incluida en la distribución
 ```
 
+## Contribuir
+
+Las sugerencias, correcciones y contribuciones son bienvenidas. Consulta
+[`CONTRIBUTING.md`](CONTRIBUTING.md) para conocer el entorno de desarrollo,
+las pruebas y el flujo de trabajo.
+
+## Citar
+
+Si usas H-IMAGO en una investigación, consulta
+[`CITATION.cff`](CITATION.cff).
+
 ## Apoyar el proyecto
 
 Si H-IMAGO te resulta útil, puedes apoyar su mantenimiento en

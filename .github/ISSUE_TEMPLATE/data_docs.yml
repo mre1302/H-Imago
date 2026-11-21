@@ -1,0 +1,47 @@
+name: Documentación, datos o formularios
+description: Avisa de un problema o propón una mejora en documentación, taxonomías, plantillas o datos de ejemplo.
+title: "[Datos/Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usa esta plantilla para temas que no son errores de programación: documentación, formularios de bloques, taxonomías, traducciones o ejemplos.
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo de aportación
+      options:
+        - Documentación
+        - Formulario de bloque
+        - Taxonomía de fuentes
+        - Taxonomía de relaciones
+        - Datos de ejemplo
+        - Traducción
+        - Otro
+    validations:
+      required: true
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: ¿Qué falta, qué está mal o qué quieres mejorar?
+    validations:
+      required: true
+  - type: input
+    id: fuente
+    attributes:
+      label: Fuente o referencia
+      description: Documento, norma, bibliografía o enlace que respalde el cambio.
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta concreta
+      description: Si puedes, indica el texto, la categoría o el cambio exacto.
+  - type: checkboxes
+    id: permisos
+    attributes:
+      label: Permisos y privacidad
+      options:
+        - label: El material que aporto puede publicarse y no contiene datos personales ni documentos restringidos.
+          required: true

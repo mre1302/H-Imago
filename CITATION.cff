@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "Si usas H-IMAGO en una investigación, cita el proyecto así:"
+title: "H-IMAGO"
+abstract: >-
+  Aplicación de escritorio para la investigación prosopográfica, el análisis
+  de documentación histórica y el análisis de redes sociales históricas.
+type: software
+authors:
+  - family-names: "Ramírez-Espíndola"
+    given-names: "Manuel"
+    affiliation: "Proyecto H-IMAGO"
+version: "0.0.28"
+date-released: "2026-11-20"
+license: MIT
+repository-code: "https://github.com/mre1302/H-Imago"
+url: "https://github.com/mre1302/H-Imago"
+keywords:
+  - prosopography
+  - historical network analysis
+  - digital humanities
+  - historical research
+  - electron
+  - sqlite
+  - mysql

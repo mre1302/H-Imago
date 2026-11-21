@@ -1,0 +1,57 @@
+name: Propuesta de mejora
+description: Propón una función, un cambio de interfaz o una mejora de rendimiento.
+title: "[Mejora]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por la propuesta. Explica el problema antes de la solución: así es más fácil valorar el cambio.
+  - type: textarea
+    id: problema
+    attributes:
+      label: ¿Qué problema resuelve?
+      description: Describe la situación actual y a quién afecta.
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta
+      description: ¿Cómo imaginas la mejora?
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+      description: Otras formas de resolverlo o soluciones que ya existen.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área principal
+      options:
+        - Interfaz de usuario
+        - Datos y base de datos
+        - Búsqueda
+        - Grafo y análisis de redes
+        - Importación y exportación
+        - Documentación
+        - Accesibilidad
+        - Rendimiento
+        - Otra
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Capturas, ejemplos, referencias o casos de uso.
+  - type: checkboxes
+    id: ayuda
+    attributes:
+      label: ¿Puedes ayudar?
+      options:
+        - label: Puedo aportar ejemplos o datos ficticios.
+        - label: Puedo ayudar con la documentación.
+        - label: Puedo intentar implementarlo.

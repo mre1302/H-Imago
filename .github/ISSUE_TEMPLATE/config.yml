@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Preguntas y debates
+    url: https://github.com/mre1302/H-Imago/discussions
+    about: Para dudas de uso, ideas abiertas y casos de investigación.
+  - name: Patrocinar H-IMAGO
+    url: https://github.com/sponsors/mre1302
+    about: Apoya el mantenimiento del proyecto.
