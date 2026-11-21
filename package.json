@@ -51,7 +51,8 @@
       "db/**/*",
       "lib/**/*",
       "build/**/*",
-      "package.json"
+      "package.json",
+      "LICENSE"
     ],
     "electronFuses": {
       "runAsNode": false,

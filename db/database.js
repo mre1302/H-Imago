@@ -263,7 +263,7 @@ class BaseDatos {
       flags: ['FOUND_ROWS'],
     });
     this.pool.on('connection', (conexion) => {
-      conexion.query("SET time_zone = '+00:00'").catch(() => { /* sin permiso */ });
+      conexion.promise().query("SET time_zone = '+00:00'").catch(() => { /* sin permiso */ });
     });
     this.config = cfg;
     try {
