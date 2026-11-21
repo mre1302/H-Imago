@@ -21,8 +21,8 @@ Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación pro
       <br><sub>Inicio y proyectos guardados</sub>
     </td>
     <td width="50%">
-      <img src="docs/capturas/02-grafo.jpg" alt="Vista de grafo de relaciones" width="100%">
-      <br><sub>Vista de grafo</sub>
+      <img src="docs/capturas/02-grafo-detalle.jpg" alt="Detalle de la red con una entidad seleccionada y sus relaciones" width="100%">
+      <br><sub>Detalle de la red y relaciones</sub>
     </td>
   </tr>
   <tr>
