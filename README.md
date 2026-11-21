@@ -1,7 +1,6 @@
 ﻿# H-IMAGO
 
-Aplicación de escritorio (Electron + SQLite/MySQL) para el **análisis de documentación histórica**,
-la **prosopografía histórica** y el **análisis de redes sociales históricas (ARS)**.
+Aplicación de escritorio (Electron + SQLite/MySQL) para el **análisis de documentación histórica**, **prosopografía histórica** y el **análisis de redes sociales históricas (ARS)**.
 
 ## Estructura de la aplicación
 
