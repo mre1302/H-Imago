@@ -29,6 +29,7 @@ exportaciones/
 exports/
 datos-investigacion/
 bloque-*.json
-/*.json
+*.json
 !/package.json
 !/package-lock.json
+!/docs/formularios-bloques-ids.json
