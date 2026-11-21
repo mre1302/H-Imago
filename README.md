@@ -1,5 +1,7 @@
 ﻿# H-IMAGO
 
+[![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
+
 Aplicación de escritorio (Electron + SQLite/MySQL) para el **análisis de documentación histórica**, **prosopografía histórica** y el **análisis de redes sociales históricas (ARS)**.
 
 ## Estructura de la aplicación
@@ -439,3 +441,8 @@ src/
       busqueda.js        Búsqueda general (índice, filtros y resultados)
   vendor/leaflet/        Copia local de Leaflet incluida en la distribución
 ```
+
+## Apoyar el proyecto
+
+Si H-IMAGO te resulta útil, puedes apoyar su mantenimiento en
+[GitHub Sponsors](https://github.com/sponsors/mre1302).
