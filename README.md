@@ -1,4 +1,12 @@
-﻿# H-IMAGO
+﻿<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/assets/logo-himago-oscuro.png">
+    <source media="(prefers-color-scheme: light)" srcset="src/assets/logo-himago-claro.png">
+    <img src="src/assets/logo-himago-claro.png" alt="H-IMAGO" width="640">
+  </picture>
+</p>
+
+# H-IMAGO
 
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
