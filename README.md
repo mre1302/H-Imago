@@ -12,6 +12,57 @@
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
 
+## Capturas
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/capturas/01-inicio.png" alt="Pantalla de inicio de H-IMAGO" width="100%">
+      <br><sub>Inicio y proyectos guardados</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/capturas/02-grafo.jpg" alt="Vista de grafo de relaciones" width="100%">
+      <br><sub>Vista de grafo</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/capturas/03-grafo-etiquetas.jpg" alt="Grafo con etiquetas de entidades" width="100%">
+      <br><sub>Grafo con etiquetas</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/capturas/04-georreferenciador.png" alt="Georreferenciador con mapa" width="100%">
+      <br><sub>Georreferenciador</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/capturas/05-personas.png" alt="Ficha de persona y relaciones" width="100%">
+      <br><sub>Personas y relaciones</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/capturas/06-busqueda.png" alt="Búsqueda general" width="100%">
+      <br><sub>Búsqueda general</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/capturas/07-patrimonios.png" alt="Listado de patrimonios" width="100%">
+      <br><sub>Patrimonios</sub>
+    </td>
+    <td width="50%">
+      <img src="docs/capturas/08-fuentes.png" alt="Fuentes y registros" width="100%">
+      <br><sub>Fuentes y registros</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center" width="100%">
+      <img src="docs/capturas/09-bloques-registro.png" alt="Editor de bloques de registro" width="100%">
+      <br><sub>Bloques de registro</sub>
+    </td>
+  </tr>
+</table>
+
 ## Estructura de la aplicación
 
 1. **Index**
