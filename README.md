@@ -2,7 +2,7 @@
 
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
-Aplicación de escritorio (Electron + SQLite/MySQL) para el **análisis de documentación histórica**, **prosopografía histórica** y el **análisis de redes sociales históricas (ARS)**.
+Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
 
 ## Estructura de la aplicación
 
