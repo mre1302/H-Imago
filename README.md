@@ -12,6 +12,25 @@
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
 
+## Descargar H-IMAGO
+
+**No necesitas saber programar ni usar Git.** Descarga el archivo correspondiente a tu sistema y ábrelo.
+
+**Versión 0.0.28** · 20 de noviembre de 2026
+
+| Sistema | Descarga | Cómo se usa |
+|---|---|---|
+| **Windows 10/11 (64 bits)** | [**Instalador H-IMAGO**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-Setup.exe) | Recomendado. Abre el archivo y sigue el asistente. |
+| **Windows portable** | [**H-IMAGO portable (ZIP)**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-win-x64-portable.zip) | Descomprime el ZIP y ejecuta `H-IMAGO.exe`. |
+| **Linux (AppImage)** | [**H-IMAGO AppImage**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28.AppImage) | Dale permisos de ejecución (`chmod +x H-IMAGO-0.0.28.AppImage`) y ábrelo. |
+| **Debian / Ubuntu (64 bits)** | [**Paquete .deb**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/h-imago_0.0.28_amd64.deb) | Ábrelo con el instalador de paquetes o instálalo con `sudo apt install ./h-imago_0.0.28_amd64.deb`. |
+
+También puedes ver todos los archivos en la [página de la release](https://github.com/mre1302/H-Imago/releases/tag/v0.0.28). Para futuras versiones, consulta [Releases](https://github.com/mre1302/H-Imago/releases).
+
+> **Nota para Windows:** el instalador todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
+
+**Requisitos:** Windows 10/11 de 64 bits o Linux de 64 bits. No hace falta instalar Node.js, Git ni una base de datos. En modo personal, SQLite va incluido.
+
 ## Capturas
 
 <table>
