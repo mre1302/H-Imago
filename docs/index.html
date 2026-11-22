@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H-IMAGO — Prosopografía y redes históricas</title>
+  <meta name="description" content="H-IMAGO es una aplicación de escritorio libre para prosopografía y análisis de redes sociales históricas. Fichas, fuentes, relaciones, mapas y búsqueda en un solo lugar.">
+  <meta name="author" content="Proyecto H-IMAGO">
+  <meta name="theme-color" content="#080a0c">
+  <link rel="canonical" href="https://mre1302.github.io/H-Imago/">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon-180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:title" content="H-IMAGO — Prosopografía y redes históricas">
+  <meta property="og:description" content="Una aplicación de escritorio libre para reunir fichas, fuentes, relaciones y mapas históricos. Sin escribir una línea de código.">
+  <meta property="og:url" content="https://mre1302.github.io/H-Imago/">
+  <meta property="og:image" content="https://mre1302.github.io/H-Imago/capturas/02-grafo-detalle.jpg">
+  <meta property="og:image:alt" content="Vista de una red histórica en H-IMAGO">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="H-IMAGO — Prosopografía y redes históricas">
+  <meta name="twitter:description" content="Fichas, fuentes, relaciones, mapas y búsqueda para investigación histórica. Software libre para humanistas.">
+  <meta name="twitter:image" content="https://mre1302.github.io/H-Imago/capturas/02-grafo-detalle.jpg">
+
+  <link rel="stylesheet" href="assets/estilos.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "H-IMAGO",
+    "applicationCategory": "EducationalApplication",
+    "applicationSubCategory": "Digital Humanities",
+    "operatingSystem": "Windows 10/11, Linux",
+    "softwareVersion": "0.0.28",
+    "license": "https://opensource.org/licenses/MIT",
+    "url": "https://mre1302.github.io/H-Imago/",
+    "downloadUrl": "https://github.com/mre1302/H-Imago/releases/latest",
+    "description": "Aplicación de escritorio libre para prosopografía y análisis de redes sociales históricas.",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "Proyecto H-IMAGO" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <div class="announcement">
+    <div class="container announcement-inner">
+      <span class="announcement-dot" aria-hidden="true"></span>
+      <span><strong>H-IMAGO 0.0.28</strong> ya está disponible.</span>
+      <a href="#descargas">Descargar <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="./" aria-label="H-IMAGO, inicio">
+        <img class="brand-logo brand-logo--dark" src="assets/logo-himago-oscuro.png" alt="" width="1000" height="621">
+        <img class="brand-logo brand-logo--light" src="assets/logo-himago-claro.png" alt="" width="1000" height="621">
+      </a>
+
+      <nav class="site-nav" aria-label="Secciones">
+        <a href="#que-es">Qué es</a>
+        <a href="#capturas">Capturas</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#descargas">Descargas</a>
+        <a href="#novedades">Novedades</a>
+        <a href="#comunidad">Comunidad</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Cambiar a tema claro" title="Cambiar tema">
+          <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+          </svg>
+          <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"></path>
+          </svg>
+        </button>
+        <a class="button button--gold button--small" href="#descargas">Descargar</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> Software libre para humanistas</p>
+          <h1>Reconstruye redes históricas <em>sin escribir una línea de código.</em></h1>
+          <p class="lead">H-IMAGO reúne fichas prosopográficas, fuentes, relaciones y mapas en una aplicación de escritorio sencilla. Trabaja con documentación de archivo; deja el código para otra persona.</p>
+          <div class="hero-actions">
+            <a class="button button--gold" href="#descargas">Descargar H-IMAGO</a>
+            <a class="button button--ghost" href="#capturas">Ver capturas</a>
+          </div>
+          <ul class="hero-meta" aria-label="Características principales">
+            <li><span class="check" aria-hidden="true">✓</span> Windows y Linux</li>
+            <li><span class="check" aria-hidden="true">✓</span> Sin servidores en modo personal</li>
+            <li><span class="check" aria-hidden="true">✓</span> Gratis y de código abierto</li>
+          </ul>
+        </div>
+
+        <div class="hero-visual">
+          <span class="hero-badge">Versión 0.0.28</span>
+          <div class="browser-frame">
+            <div class="browser-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+            <img src="capturas/02-grafo-detalle.jpg" alt="Vista de H-IMAGO con una red histórica y el panel de relaciones de una persona" width="1354" height="829">
+          </div>
+          <p class="hero-caption">Selecciona una entidad y consulta sus vínculos sin perder de vista la red completa.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="que-es" class="section">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Qué puedes hacer</p>
+          <h2>Todo el trabajo histórico, en un mismo lugar</h2>
+          <p class="section-lead">H-IMAGO no es una base de datos más: está pensado para pasar de la ficha al vínculo, del vínculo a la red y de la red a la interpretación.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"></rect><circle cx="12" cy="9" r="3"></circle><path d="M8 17c.8-2 2.2-3 4-3s3.2 1 4 3"></path></svg>
+            </div>
+            <h3>Fichas que ordenan la investigación</h3>
+            <p>Personas, instituciones, lugares, patrimonios y fuentes con campos pensados para la investigación histórica y las dataciones imprecisas.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.2"></circle><circle cx="18" cy="7" r="2.2"></circle><circle cx="12" cy="18" r="2.2"></circle><path d="M8 6.5h8M7 8l4 8M17 9l-4 7"></path></svg>
+            </div>
+            <h3>Relaciones con contexto</h3>
+            <p>Tipos de vínculo, fechas, fuentes y notas para reconstruir parentescos, dependencias, conflictos y redes de poder.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="6" cy="7" r="2"></circle><circle cx="18" cy="5" r="2"></circle><circle cx="17" cy="18" r="2"></circle><circle cx="7" cy="17" r="2"></circle><path d="M8 7l8-1M7 9l9 7M16 7l-7 8"></path></svg>
+            </div>
+            <h3>La red, de un vistazo</h3>
+            <p>Explora el grafo interactivo, filtra por tipo de entidad o relación, ajusta la temporalidad y exporta una imagen para tus publicaciones.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+            </div>
+            <h3>Lugares y mapas</h3>
+            <p>Georreferencia los escenarios de tu investigación y observa cómo se distribuyen en el mapa sin salir de la aplicación.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg>
+            </div>
+            <h3>Una búsqueda que cruza todo</h3>
+            <p>Encuentra personas, relaciones, bloques de registro y transcripciones desde un único buscador, con fragmentos y filtros.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5V5.5Z"></path><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"></path></svg>
+            </div>
+            <h3>Fuentes, cuadernos y registros</h3>
+            <p>Organiza la documentación de archivo, transcribe cuadernos y crea bloques de registro adaptados a tus formularios de trabajo.</p>
+          </article>
+        </div>
+
+        <div class="feature-note">
+          <strong>Individual o en equipo.</strong> En modo personal todo se guarda en tu equipo con SQLite. Si trabajas con otras personas, H-IMAGO puede conectarse a una base MySQL/MariaDB compartida.
+        </div>
+      </div>
+    </section>
+
+    <section id="capturas" class="section section--alt">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Capturas</p>
+          <h2>Así se ve H-IMAGO por dentro</h2>
+          <p class="section-lead">Una interfaz pensada para leer, relacionar y explorar; no para configurar servidores ni escribir comandos.</p>
+        </div>
+
+        <div class="gallery">
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/01-inicio.png" data-caption="Inicio y proyectos guardados" aria-label="Ampliar captura: inicio y proyectos guardados">
+              <img src="capturas/01-inicio.png" alt="Pantalla de inicio de H-IMAGO con los proyectos guardados" loading="lazy" width="1344" height="832">
+            </button>
+            <figcaption>Inicio y proyectos guardados</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/02-grafo-detalle.jpg" data-caption="Detalle de la red y relaciones" aria-label="Ampliar captura: detalle de la red y relaciones">
+              <img src="capturas/02-grafo-detalle.jpg" alt="Detalle de la red con una persona seleccionada y sus relaciones" loading="lazy" width="1354" height="829">
+            </button>
+            <figcaption>Detalle de la red y relaciones</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/03-grafo-etiquetas.jpg" data-caption="Grafo con etiquetas de entidades" aria-label="Ampliar captura: grafo con etiquetas">
+              <img src="capturas/03-grafo-etiquetas.jpg" alt="Grafo de la red histórica con etiquetas de entidades" loading="lazy" width="1353" height="833">
+            </button>
+            <figcaption>Grafo con etiquetas</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/04-georreferenciador.png" data-caption="Georreferenciador" aria-label="Ampliar captura: georreferenciador">
+              <img src="capturas/04-georreferenciador.png" alt="Georreferenciador de H-IMAGO con un mapa de lugares históricos" loading="lazy" width="1355" height="838">
+            </button>
+            <figcaption>Georreferenciador</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/05-personas.png" data-caption="Personas y relaciones" aria-label="Ampliar captura: personas y relaciones">
+              <img src="capturas/05-personas.png" alt="Ficha de persona con sus relaciones en H-IMAGO" loading="lazy" width="1343" height="827">
+            </button>
+            <figcaption>Personas y relaciones</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/06-busqueda.png" data-caption="Búsqueda general" aria-label="Ampliar captura: búsqueda general">
+              <img src="capturas/06-busqueda.png" alt="Pantalla de búsqueda general de H-IMAGO" loading="lazy" width="1351" height="828">
+            </button>
+            <figcaption>Búsqueda general</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/07-patrimonios.png" data-caption="Patrimonios" aria-label="Ampliar captura: patrimonios">
+              <img src="capturas/07-patrimonios.png" alt="Listado de patrimonios históricos en H-IMAGO" loading="lazy" width="1345" height="834">
+            </button>
+            <figcaption>Patrimonios</figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <button class="gallery-button" type="button" data-full="capturas/08-fuentes.png" data-caption="Fuentes y registros" aria-label="Ampliar captura: fuentes y registros">
+              <img src="capturas/08-fuentes.png" alt="Fuentes y registros documentales en H-IMAGO" loading="lazy" width="1350" height="829">
+            </button>
+            <figcaption>Fuentes y registros</figcaption>
+          </figure>
+
+          <figure class="gallery-item gallery-item--wide">
+            <button class="gallery-button" type="button" data-full="capturas/09-bloques-registro.png" data-caption="Bloques de registro" aria-label="Ampliar captura: bloques de registro">
+              <img src="capturas/09-bloques-registro.png" alt="Editor de bloques de registro de H-IMAGO" loading="lazy" width="1353" height="831">
+            </button>
+            <figcaption>Bloques de registro</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-funciona" class="section">
+      <div class="container">
+        <div class="section-head section-head--center">
+          <p class="eyebrow">Cómo funciona</p>
+          <h2>De la descarga a la primera red</h2>
+          <p class="section-lead">Sin instalar Node.js, sin usar Git y sin configurar un servidor. Solo tienes que descargar, abrir y empezar.</p>
+        </div>
+
+        <div class="steps">
+          <article class="step">
+            <span class="step-number">1</span>
+            <h3>Descarga y abre</h3>
+            <p>Elige el instalador de Windows o el archivo para Linux. H-IMAGO se abre como cualquier otra aplicación de escritorio.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">2</span>
+            <h3>Crea o abre un proyecto</h3>
+            <p>Empieza un proyecto nuevo o importa uno existente. En modo personal, la base de datos se guarda en tu equipo.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">3</span>
+            <h3>Añade, relaciona y explora</h3>
+            <p>Incorpora personas, instituciones, lugares y fuentes; crea vínculos y observa la red, el mapa y los resultados de búsqueda.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="descargas" class="section section--downloads">
+      <div class="container">
+        <div class="download-panel">
+          <div class="download-copy">
+            <p class="eyebrow">Descargas</p>
+            <h2>Empieza en dos minutos</h2>
+            <p>Descarga la versión que corresponda a tu sistema. No necesitas clonar el repositorio ni saber usar Git.</p>
+            <p class="download-version"><span class="pill pill--gold">Versión 0.0.28</span> <span>20 de noviembre de 2026</span></p>
+            <p class="download-note">Requisitos: Windows 10/11 de 64 bits o Linux de 64 bits. En modo personal no hace falta instalar una base de datos.</p>
+            <a class="text-link" href="https://github.com/mre1302/H-Imago/releases" rel="noopener">Ver todas las versiones <span aria-hidden="true">→</span></a>
+          </div>
+
+          <div class="download-grid">
+            <a class="download-card download-card--primary" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-Setup.exe">
+              <span class="download-os">Windows</span>
+              <strong>Instalador .exe</strong>
+              <span>Recomendado · 64 bits</span>
+            </a>
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-win-x64-portable.zip">
+              <span class="download-os">Windows</span>
+              <strong>Versión portable</strong>
+              <span>ZIP · sin instalación</span>
+            </a>
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28.AppImage">
+              <span class="download-os">Linux</span>
+              <strong>AppImage</strong>
+              <span>Portable · mayoría de distros</span>
+            </a>
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/h-imago_0.0.28_amd64.deb">
+              <span class="download-os">Debian / Ubuntu</span>
+              <strong>Paquete .deb</strong>
+              <span>64 bits · instalación integrada</span>
+            </a>
+          </div>
+        </div>
+
+        <p class="fine-print">El instalador de Windows todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia; es esperable en esta versión. Si decides continuar, pulsa <strong>Más información → Ejecutar de todas formas</strong>.</p>
+      </div>
+    </section>
+
+    <section id="novedades" class="section section--alt">
+      <div class="container">
+        <div class="section-head section-head--split">
+          <div>
+            <p class="eyebrow">Cada viernes</p>
+            <h2>Novedades de H-IMAGO</h2>
+          </div>
+          <span class="pill">Viernes</span>
+        </div>
+        <p class="section-lead">Tutoriales, reuniones de trabajo, nuevas utilidades y versiones. Un punto de encuentro para aprender y compartir.</p>
+
+        <div class="news-layout">
+          <article class="news-feature">
+            <div class="news-meta">
+              <span class="pill pill--gold">Última novedad</span>
+              <time datetime="2026-11-20">20 nov 2026</time>
+            </div>
+            <h3>H-IMAGO 0.0.28 ya está disponible</h3>
+            <p>Una versión de consolidación: mejoras de integridad de datos, edición de cuadernos, importación de bloques y rendimiento de búsqueda y grafo.</p>
+            <a class="text-link" href="https://github.com/mre1302/H-Imago/releases/tag/v0.0.28" rel="noopener">Leer la release <span aria-hidden="true">→</span></a>
+          </article>
+
+          <div class="news-list">
+            <article class="news-item">
+              <span class="news-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m10 8 6 4-6 4V8Z"></path></svg>
+              </span>
+              <div>
+                <h3>Tutoriales</h3>
+                <p>Vídeos cortos para crear un proyecto, añadir fichas y construir la primera red.</p>
+              </div>
+              <span class="pill">Próximamente</span>
+            </article>
+            <article class="news-item">
+              <span class="news-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 20c.7-3.5 2.5-5 5.5-5s4.8 1.5 5.5 5"></path><circle cx="17" cy="9" r="2.2"></circle><path d="M16 15c2.7.1 4.1 1.5 4.6 4"></path></svg>
+              </span>
+              <div>
+                <h3>Workshops</h3>
+                <p>Reuniones de trabajo y casos de uso con personas que investigan con documentación histórica.</p>
+              </div>
+              <span class="pill">Próximamente</span>
+            </article>
+            <article class="news-item">
+              <span class="news-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z"></path><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"></path></svg>
+              </span>
+              <div>
+                <h3>Nuevas utilidades</h3>
+                <p>Mejoras de la aplicación, experimentos y funciones que irán entrando en las próximas versiones.</p>
+              </div>
+              <span class="pill">Próximamente</span>
+            </article>
+          </div>
+        </div>
+
+        <p class="news-note">Cada viernes añadiremos aquí la novedad de la semana. Si quieres proponer un tema o participar en un workshop, escríbenos en <a href="https://github.com/mre1302/H-Imago/discussions" rel="noopener">Discussions</a>.</p>
+        <!-- NOVEDADES: copiar el bloque de noticia y actualizar fecha, título, texto y enlace cada viernes. -->
+      </div>
+    </section>
+
+    <section id="comunidad" class="section">
+      <div class="container community-grid">
+        <div>
+          <p class="eyebrow">Comunidad</p>
+          <h2>Hecho para humanistas. Abierto a quien quiera mejorarlo.</h2>
+          <p class="section-lead">No hace falta saber programar para colaborar. Puedes probar la aplicación, reportar un error, sugerir una mejora, compartir un caso de uso o proponer una colaboración.</p>
+          <ul class="audience-list">
+            <li>Historiadores e historiadoras sociales, económicas y culturales.</li>
+            <li>Archivos, bibliotecas y centros de documentación.</li>
+            <li>Equipos de humanidades digitales y proyectos prosopográficos.</li>
+            <li>Docentes y estudiantes que trabajan con redes históricas.</li>
+          </ul>
+          <div class="button-row">
+            <a class="button button--gold" href="https://github.com/mre1302/H-Imago/discussions" rel="noopener">Plantear una duda</a>
+            <a class="button button--ghost" href="https://github.com/mre1302/H-Imago/issues" rel="noopener">Reportar un problema</a>
+          </div>
+        </div>
+
+        <aside class="community-card" aria-label="Enlaces del proyecto">
+          <p class="eyebrow">También puedes</p>
+          <ul class="link-list">
+            <li><a href="https://github.com/mre1302/H-Imago" rel="noopener">Ver el código en GitHub <span aria-hidden="true">→</span></a></li>
+            <li><a href="https://github.com/mre1302/H-Imago/blob/main/CONTRIBUTING.md" rel="noopener">Cómo contribuir <span aria-hidden="true">→</span></a></li>
+            <li><a href="https://github.com/mre1302/H-Imago/blob/main/CITATION.cff" rel="noopener">Cómo citar H-IMAGO <span aria-hidden="true">→</span></a></li>
+            <li><a href="https://github.com/sponsors/mre1302" rel="noopener">Apoyar el mantenimiento <span aria-hidden="true">→</span></a></li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a class="brand brand--footer" href="./" aria-label="H-IMAGO, inicio">
+          <img class="brand-logo brand-logo--dark" src="assets/logo-himago-oscuro.png" alt="" width="1000" height="621">
+          <img class="brand-logo brand-logo--light" src="assets/logo-himago-claro.png" alt="" width="1000" height="621">
+        </a>
+        <p>Aplicación de escritorio libre para prosopografía y análisis de redes sociales históricas.</p>
+      </div>
+
+      <nav class="footer-nav" aria-label="Enlaces del pie">
+        <a href="https://github.com/mre1302/H-Imago" rel="noopener">GitHub</a>
+        <a href="https://github.com/mre1302/H-Imago/releases" rel="noopener">Releases</a>
+        <a href="https://github.com/mre1302/H-Imago/discussions" rel="noopener">Discussions</a>
+        <a href="https://github.com/mre1302/H-Imago/blob/main/LICENSE" rel="noopener">Licencia MIT</a>
+      </nav>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 Proyecto H-IMAGO · Versión 0.0.28</span>
+      <span>Hecho para humanistas. Sin código. Sin cookies ni rastreadores.</span>
+    </div>
+  </footer>
+
+  <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-caption">
+    <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Cerrar captura">×</button>
+    <img id="lightbox-image" src="" alt="">
+    <p id="lightbox-caption"></p>
+  </dialog>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>
