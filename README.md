@@ -8,9 +8,12 @@
 
 # H-IMAGO
 
+[![Web del proyecto](https://img.shields.io/badge/Web-mre1302.github.io%2FH--Imago-e0a92f?logo=githubpages&logoColor=white)](https://mre1302.github.io/H-Imago/)
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
+
+**Web del proyecto:** [mre1302.github.io/H-Imago](https://mre1302.github.io/H-Imago/)
 
 ## Descargar H-IMAGO
 
