@@ -9,6 +9,7 @@
 # H-IMAGO
 
 [![Web del proyecto](https://img.shields.io/badge/Web-mre1302.github.io%2FH--Imago-e0a92f?logo=githubpages&logoColor=white)](https://mre1302.github.io/H-Imago/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24475875.svg)](https://doi.org/10.5281/zenodo.24475875)
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
@@ -531,8 +532,13 @@ las pruebas y el flujo de trabajo.
 
 ## Citar
 
-Si usas H-IMAGO en una investigación, consulta
-[`CITATION.cff`](CITATION.cff).
+Si usas H-IMAGO en una investigación, cita el proyecto así:
+
+Ramírez-Espíndola, M. A. (2026). H-IMAGO (Versión 0.0.28) [Programa informático]. Zenodo. https://doi.org/10.5281/zenodo.24475875
+
+También puedes usar el botón **Cite this repository** de GitHub o consultar
+[`CITATION.cff`](CITATION.cff). El DOI del concepto, que agrupa todas las
+versiones, es `10.5281/zenodo.24475874`.
 
 ## Apoyar el proyecto
 
