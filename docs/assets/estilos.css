@@ -26,6 +26,8 @@
   --font-display: "Sitka Display", "Sitka Text", "Charter", "Bitstream Charter", "Cambria", Georgia, serif;
   --font-reading: "Sitka Text", "Charter", "Bitstream Charter", "Cambria", Georgia, serif;
   --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.45, 0.05, 0.25, 1);
   color-scheme: dark;
   scroll-behavior: auto;
 }
@@ -171,6 +173,12 @@ h3 {
   background: var(--header-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  transition: background 320ms var(--ease-out), box-shadow 320ms var(--ease-out);
+}
+
+.site-header.is-scrolled {
+  background: rgba(8, 10, 12, 0.92);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
 }
 
 .header-inner {
@@ -215,8 +223,31 @@ h3 {
   white-space: nowrap;
 }
 
+.site-nav a {
+  position: relative;
+  transition: color 220ms var(--ease-out);
+}
+
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), rgba(224, 169, 47, 0.2));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 320ms var(--ease-out);
+}
+
 .site-nav a:hover {
   color: var(--gold);
+}
+
+.site-nav a:hover::after,
+.site-nav a:focus-visible::after {
+  transform: scaleX(1);
 }
 
 .header-actions {
@@ -241,11 +272,32 @@ h3 {
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+  position: relative;
+  overflow: hidden;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), background 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.22) 50%, transparent 68%);
+  transform: translateX(-130%);
+  transition: transform 0ms;
+  pointer-events: none;
+}
+
+.button:hover::after {
+  transform: translateX(130%);
+  transition: transform 680ms var(--ease-out);
 }
 
 .button:hover {
   transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .button--small {
@@ -287,10 +339,23 @@ h3 {
 .hero::before {
   content: "";
   position: absolute;
-  inset: -20% -10% auto 38%;
+  inset: 0 -10% auto 38%;
   height: 760px;
-  background: radial-gradient(circle, rgba(224, 169, 47, 0.14), transparent 62%);
+  background: radial-gradient(ellipse closest-side at 50% 50%, rgba(224, 169, 47, 0.15), rgba(224, 169, 47, 0) 78%);
   pointer-events: none;
+  animation: heroGlow 18s var(--ease-soft) infinite alternate;
+}
+
+@keyframes heroGlow {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: translate3d(-4%, 3%, 0) scale(1.08);
+    opacity: 0.86;
+  }
 }
 
 .hero-grid {
@@ -328,6 +393,11 @@ h3 {
   color: var(--gold);
   font-style: italic;
   font-weight: 500;
+  background-image: linear-gradient(90deg, rgba(224, 169, 47, 0), rgba(242, 193, 78, 0.55), rgba(224, 169, 47, 0));
+  background-repeat: no-repeat;
+  background-position: left calc(100% - 0.02em);
+  background-size: 100% 1px;
+  padding-bottom: 0.08em;
 }
 
 .lead {
@@ -388,7 +458,7 @@ h3 {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 55% 45%, rgba(224, 169, 47, 0.08), transparent 62%);
+  background: radial-gradient(ellipse closest-side at 55% 45%, rgba(224, 169, 47, 0.08), rgba(224, 169, 47, 0) 80%);
   pointer-events: none;
 }
 
@@ -396,6 +466,8 @@ h3 {
   position: relative;
   width: 100%;
   height: clamp(430px, 46vw, 590px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 86%, rgba(0, 0, 0, 0) 100%);
 }
 
 #network-canvas {
@@ -440,7 +512,7 @@ h3 {
   flex: 0 0 auto;
   width: 24px;
   height: 1px;
-  background: var(--line);
+  background: linear-gradient(90deg, var(--gold), rgba(224, 169, 47, 0.12));
 }
 
 .section-head h2 {
@@ -546,6 +618,7 @@ h3 {
   margin-bottom: 32px;
   padding-bottom: 28px;
   border-bottom: 1px solid var(--line-soft);
+  border-image: linear-gradient(90deg, rgba(224, 169, 47, 0.3), rgba(255, 255, 255, 0.07) 55%, rgba(255, 255, 255, 0)) 1;
 }
 
 .chapter-title {
@@ -565,7 +638,7 @@ h3 {
   flex: 0 0 auto;
   width: 26px;
   height: 1px;
-  background: var(--line);
+  background: linear-gradient(90deg, var(--gold), rgba(224, 169, 47, 0.12));
 }
 
 .chapter-index {
@@ -624,18 +697,31 @@ h3 {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--line-soft);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 14px;
-  background: var(--bg-elevated);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  background: linear-gradient(180deg, var(--panel), var(--bg-elevated));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 18px 44px rgba(0, 0, 0, 0.3);
+  transition: border-color 320ms var(--ease-out), box-shadow 320ms var(--ease-out);
+}
+
+.media-figure:hover {
+  border-color: rgba(224, 169, 47, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 56px rgba(0, 0, 0, 0.38);
 }
 
 .media-figure .gallery-button img {
-  transition: transform 360ms ease;
+  transition: transform 620ms var(--ease-out), filter 620ms var(--ease-out);
+  filter: saturate(0.94) brightness(0.96);
 }
 
-.media-figure:hover .gallery-button img {
-  transform: scale(1.012);
+.media-figure:hover .gallery-button img,
+.media-figure:focus-within .gallery-button img {
+  transform: scale(1.016);
+  filter: saturate(1.02) brightness(1.02);
 }
 
 .media-figure figcaption {
@@ -646,6 +732,11 @@ h3 {
   font-size: 0.78rem;
   font-style: italic;
   line-height: 1.45;
+  transition: color 280ms var(--ease-out);
+}
+
+.media-figure:hover figcaption {
+  color: var(--text-soft);
 }
 
 .media-figure figcaption span {
@@ -728,13 +819,19 @@ h3 {
   background: linear-gradient(90deg, var(--gold-soft), rgba(224, 169, 47, 0.02) 74%);
   color: var(--text);
   text-decoration: none;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 200ms var(--ease-out),
+    background 200ms var(--ease-out),
+    transform 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
 }
 
 .chapter-callout:hover {
   border-color: var(--gold);
   color: var(--text);
   background: linear-gradient(90deg, rgba(224, 169, 47, 0.18), rgba(224, 169, 47, 0.03) 74%);
+  transform: translate3d(3px, 0, 0);
+  box-shadow: 0 16px 38px rgba(224, 169, 47, 0.09);
 }
 
 .chapter-callout-body {
@@ -773,7 +870,7 @@ h3 {
   color: var(--gold);
   font-size: 1.15rem;
   line-height: 1;
-  transition: transform 160ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 .chapter-callout:hover .chapter-callout-arrow {
@@ -812,13 +909,19 @@ h3 {
   background: linear-gradient(90deg, var(--gold-soft), rgba(224, 169, 47, 0.02) 74%);
   color: var(--text);
   text-decoration: none;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 200ms var(--ease-out),
+    background 200ms var(--ease-out),
+    transform 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
 }
 
 .function-link:hover {
   border-color: var(--gold);
   color: var(--text);
   background: linear-gradient(90deg, rgba(224, 169, 47, 0.18), rgba(224, 169, 47, 0.03) 74%);
+  transform: translate3d(3px, 0, 0);
+  box-shadow: 0 16px 38px rgba(224, 169, 47, 0.09);
 }
 
 .function-link-body {
@@ -857,7 +960,7 @@ h3 {
   color: var(--gold);
   font-size: 1.15rem;
   line-height: 1;
-  transition: transform 160ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 .function-link:hover .function-link-arrow {
@@ -957,7 +1060,7 @@ h3 {
 .chapter-link-arrow {
   color: var(--gold);
   font-size: 0.78rem;
-  transition: transform 160ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 .chapter-link:hover .chapter-link-arrow {
@@ -972,6 +1075,7 @@ h3 {
   margin-top: 42px;
   padding-top: 18px;
   border-top: 1px solid var(--line-soft);
+  border-image: linear-gradient(90deg, rgba(224, 169, 47, 0.3), rgba(255, 255, 255, 0.07) 45%, rgba(255, 255, 255, 0)) 1;
 }
 
 .detail-back {
@@ -1022,7 +1126,7 @@ h3 {
 .method-step--link {
   color: inherit;
   text-decoration: none;
-  transition: background 160ms ease;
+  transition: background 240ms var(--ease-out);
 }
 
 .method-step--link:hover {
@@ -1103,6 +1207,7 @@ h3 {
 
 .gallery-button {
   display: block;
+  position: relative;
   width: 100%;
   padding: 0;
   border: 0;
@@ -1128,6 +1233,7 @@ h3 {
   border-radius: var(--radius);
   background: linear-gradient(180deg, var(--panel), var(--bg-elevated));
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+  transition: border-color 320ms var(--ease-out), box-shadow 320ms var(--ease-out);
 }
 
 .step-number {
@@ -1229,7 +1335,7 @@ h3 {
 
 .text-link span {
   display: inline-block;
-  transition: transform 160ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 .text-link:hover span {
@@ -1253,7 +1359,7 @@ h3 {
   background: var(--bg-elevated);
   color: var(--text);
   text-decoration: none;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition: transform 240ms var(--ease-out), border-color 240ms var(--ease-out), background 240ms var(--ease-out), box-shadow 240ms var(--ease-out);
 }
 
 .download-card:hover {
@@ -1261,6 +1367,7 @@ h3 {
   border-color: var(--line);
   background: var(--panel-2);
   color: var(--text);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
 }
 
 .download-card--primary {
@@ -1487,7 +1594,7 @@ h3 {
 
 .link-list a span {
   color: var(--gold);
-  transition: transform 160ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 .link-list a:hover span {
@@ -1559,11 +1666,29 @@ h3 {
   background: var(--bg-elevated);
   color: var(--text);
   box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(14px) scale(0.985);
+  transition:
+    opacity 280ms var(--ease-out),
+    transform 280ms var(--ease-out),
+    overlay 280ms var(--ease-out) allow-discrete,
+    display 280ms var(--ease-out) allow-discrete;
+}
+
+.lightbox[open] {
+  opacity: 1;
+  transform: none;
 }
 
 .lightbox::backdrop {
   background: rgba(0, 0, 0, 0.78);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 280ms ease, overlay 280ms allow-discrete, display 280ms allow-discrete;
+}
+
+.lightbox[open]::backdrop {
+  opacity: 1;
 }
 
 .lightbox img {
@@ -1602,11 +1727,14 @@ h3 {
 
 .reveal {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(26px);
   transition:
-    opacity 650ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  transition-delay: var(--reveal-delay, 0ms);
+    opacity 760ms var(--ease-soft),
+    transform 760ms var(--ease-soft),
+    border-color 320ms var(--ease-out),
+    box-shadow 320ms var(--ease-out),
+    background 320ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms), var(--reveal-delay, 0ms), 0ms, 0ms, 0ms;
 }
 
 .reveal.is-visible {
@@ -1849,5 +1977,151 @@ h3 {
   .reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Refinamientos: textura, detalle tipográfico y microinteracciones
+   ------------------------------------------------------------------ */
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 147, 135, 0.4) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(155, 147, 135, 0.32);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(224, 169, 47, 0.45);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .chapter-index,
+  .chapter-link-index,
+  .method-number,
+  .function-index,
+  .step-number {
+    background: linear-gradient(115deg, var(--gold-strong) 20%, var(--gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.gallery-button::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(242, 193, 78, 0.4);
+  border-radius: 50%;
+  background: rgba(8, 10, 12, 0.78) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0a92f' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='m20 20-4.8-4.8'/%3E%3Cpath d='M11 8.5v5M8.5 11h5'/%3E%3C/svg%3E") center / 15px no-repeat;
+  opacity: 0;
+  transform: translateY(6px) scale(0.9);
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+}
+
+.gallery-button:hover::after,
+.gallery-button:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+
+.brand-logo {
+  filter: drop-shadow(0 2px 14px rgba(224, 169, 47, 0.16));
+}
+
+.announcement-dot {
+  animation: dotPulse 3.4s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px var(--gold-soft);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px rgba(224, 169, 47, 0.16);
+  }
+}
+
+.news-icon {
+  transition: box-shadow 260ms var(--ease-out);
+}
+
+.news-item:hover {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+
+.news-item:hover .news-icon {
+  box-shadow: 0 0 0 3px rgba(224, 169, 47, 0.08);
+}
+
+.download-card--primary:hover {
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(224, 169, 47, 0.14);
+}
+
+.lightbox-close {
+  transition: background 220ms var(--ease-out), transform 260ms var(--ease-out);
+}
+
+.lightbox-close:hover {
+  background: var(--button-hover);
+  transform: rotate(90deg);
+}
+
+.step:hover {
+  border-color: var(--line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 22px 46px rgba(0, 0, 0, 0.35);
+}
+
+@starting-style {
+  .lightbox[open] {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  .lightbox[open]::backdrop {
+    opacity: 0;
   }
 }
