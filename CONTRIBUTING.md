@@ -1,6 +1,6 @@
 # Cómo contribuir a H-IMAGO
 
-Gracias por interesarte por H-IMAGO. El proyecto combina investigación histórica, prosopografía y análisis de redes sociales, así que las contribuciones no son solo de código: también son valiosas las correcciones de documentación, las pruebas de uso, la revisión de formularios y taxonomías, los datos de ejemplo y las traducciones.
+Gracias por interesarte por H-IMAGO. El proyecto combina investigación histórica, prosopografía y visualización de redes sociales, así que las contribuciones no son solo de código: también son valiosas las correcciones de documentación, las pruebas de uso, la revisión de formularios y taxonomías, los datos de ejemplo y las traducciones.
 
 ## Formas de contribuir
 
@@ -100,7 +100,7 @@ Usa datos ficticios o anonimizados en issues, pruebas y ejemplos. El `.gitignore
 
 ## Licencia
 
-H-IMAGO se distribuye bajo licencia MIT. Al enviar una contribución aceptas que se publique bajo esa misma licencia.
+El código fuente de H-IMAGO se distribuye bajo licencia MIT. Al enviar una contribución de código aceptas que se publique bajo esa misma licencia. El contenido editorial del sitio tiene sus propios términos (`CONTENT-LICENSE.md`); si contribuyes textos o imágenes, indícalo en el PR.
 
 ## Patrocinio
 

@@ -3,7 +3,7 @@ message: "Si usas H-IMAGO en una investigación, cita el proyecto así:"
 title: "H-IMAGO"
 abstract: >-
   Aplicación de escritorio para la investigación prosopográfica, el análisis
-  de documentación histórica y el análisis de redes sociales históricas.
+  de documentación histórica y la visualización de redes sociales históricas.
 type: software
 authors:
   - family-names: "Ramírez-Espíndola"

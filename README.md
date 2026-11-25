@@ -12,7 +12,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24475875.svg)](https://doi.org/10.5281/zenodo.24475875)
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
-Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y el **análisis de redes sociales históricas (ARS)**.
+Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y la **visualización de redes sociales históricas**.
 
 **Web del proyecto:** [mre1302.github.io/H-Imago](https://mre1302.github.io/H-Imago/)
 
@@ -31,9 +31,36 @@ Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación pro
 
 También puedes ver todos los archivos en la [página de la release](https://github.com/mre1302/H-Imago/releases/tag/v0.0.28). Para futuras versiones, consulta [Releases](https://github.com/mre1302/H-Imago/releases).
 
-> **Nota para Windows:** el instalador todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
+> **Nota para Windows:** el instalador de la versión 0.0.28 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
+>
+> **Firma de código:** a partir de la versión 0.0.29, las builds de Windows se firman con SignPath.io y el certificado de SignPath Foundation. Consulta la [política de firma de código](CODE_SIGNING.md).
 
 **Requisitos:** Windows 10/11 de 64 bits o Linux de 64 bits. No hace falta instalar Node.js, Git ni una base de datos. En modo personal, SQLite va incluido.
+
+> **macOS:** la compilación está preparada en el repositorio, pero aún no hay artefactos publicados. Puede generarse desde el workflow manual `macOS build` de GitHub Actions.
+
+### Verificar descargas
+
+A partir de la versión 0.0.29, cada release incluye `SHA256SUMS-windows.txt` y
+`SHA256SUMS-linux.txt`. En Linux:
+
+```bash
+sha256sum -c SHA256SUMS-linux.txt
+```
+
+En Windows (PowerShell):
+
+```powershell
+Get-FileHash .\H-IMAGO-0.0.29-Setup.exe -Algorithm SHA256
+Get-AuthenticodeSignature .\H-IMAGO-0.0.29-Setup.exe
+```
+
+Las builds de Linux no llevan firma Authenticode; su integridad se comprueba con
+las sumas y con la atestación de procedencia de GitHub Actions:
+
+```bash
+gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
+```
 
 ## Capturas
 
@@ -151,6 +178,20 @@ restringidos o Linux sin `chrome-sandbox`), usa `npm run start:sin-sandbox`.
 
 La aceleración por hardware está activa por defecto. En equipos Linux sin GPU
 puedes arrancar con `HIMAGO_SIN_GPU=1 npm start`.
+
+### Compilar para macOS
+
+La aplicación puede empaquetarse para macOS con electron-builder. Requiere un Mac
+o un runner macOS de GitHub Actions. Genera DMG y ZIP para Intel y Apple Silicon:
+
+```bash
+npm run dist:mac:x64
+npm run dist:mac:arm64
+```
+
+El workflow manual `macOS build` genera ambos artefactos sin firmar. macOS puede
+mostrar una advertencia de Gatekeeper; para una distribución sin advertencias hay
+que firmar con un certificado Developer ID y notarizar la app.
 
 ### Pruebas y calidad
 
@@ -544,3 +585,11 @@ versiones, es `10.5281/zenodo.24475874`.
 
 Si H-IMAGO te resulta útil, puedes apoyar su mantenimiento en
 [GitHub Sponsors](https://github.com/sponsors/mre1302).
+
+## Licencia
+
+El código fuente se distribuye bajo la licencia MIT incluida en
+[`LICENSE`](LICENSE). El contenido editorial del sitio web —textos, imágenes,
+logotipos, capturas y diseño— es © 2026 Proyecto H-IMAGO y no está cubierto por
+la licencia MIT; todos los derechos reservados. Consulta
+[`CONTENT-LICENSE.md`](CONTENT-LICENSE.md).

@@ -2,7 +2,7 @@
   "name": "h-imago",
   "productName": "H-IMAGO",
   "version": "0.0.28",
-  "description": "Análisis de documentación histórica, prosopografía histórica y análisis de redes sociales históricas",
+  "description": "Análisis de documentación histórica, prosopografía histórica y visualización de redes sociales históricas",
   "main": "main.js",
   "author": {
     "name": "Proyecto H-IMAGO",
@@ -19,9 +19,14 @@
     "check": "node scripts/verificar-sintaxis.js",
     "lint": "node node_modules/eslint/bin/eslint.js .",
     "verificar": "npm run lint && npm run check && npm test",
-    "dist": "node node_modules/electron-builder/cli.js --linux AppImage deb",
-    "dist:dir": "node node_modules/electron-builder/cli.js --linux dir",
-    "dist:win": "node node_modules/electron-builder/cli.js --win nsis --x64"
+    "dist": "node node_modules/electron-builder/cli.js --linux AppImage deb --publish never",
+    "dist:dir": "node node_modules/electron-builder/cli.js --linux dir --publish never",
+    "dist:win": "node node_modules/electron-builder/cli.js --win nsis --x64 --publish never",
+    "dist:win:dir": "node node_modules/electron-builder/cli.js --win dir --x64 --publish never",
+    "dist:win:installer": "node node_modules/electron-builder/cli.js --win nsis --x64 --prepackaged dist/win-unpacked --publish never --config.win.signAndEditExecutable=false",
+    "dist:mac": "node node_modules/electron-builder/cli.js --mac dmg zip --publish never",
+    "dist:mac:x64": "node node_modules/electron-builder/cli.js --mac dmg zip --x64 --publish never",
+    "dist:mac:arm64": "node node_modules/electron-builder/cli.js --mac dmg zip --arm64 --publish never"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -40,6 +45,7 @@
   "build": {
     "appId": "org.himago.app",
     "productName": "H-IMAGO",
+    "copyright": "© 2026 Proyecto H-IMAGO",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -75,8 +81,8 @@
       "icon": "build/icon.png",
       "syncDesktopName": true,
       "maintainer": "Proyecto H-IMAGO <contacto@h-imago.org>",
-      "synopsis": "Análisis de documentación histórica y redes sociales históricas",
-      "description": "H-IMAGO: prosopografía histórica, documentación y análisis de redes sociales históricas."
+      "synopsis": "Análisis de documentación histórica y visualización de redes sociales históricas",
+      "description": "H-IMAGO: prosopografía histórica, documentación y visualización de redes sociales históricas."
     },
     "win": {
       "target": [
@@ -88,8 +94,20 @@
         }
       ],
       "icon": "build/icon.ico",
-      "signAndEditExecutable": false,
       "artifactName": "H-IMAGO-${version}-Setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "artifactName": "H-IMAGO-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSHumanReadableCopyright": "© 2026 Proyecto H-IMAGO"
+      }
     },
     "nsis": {
       "oneClick": false,

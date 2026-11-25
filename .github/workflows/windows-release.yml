@@ -1,0 +1,259 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Firmar con SignPath si la configuración está disponible"
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+jobs:
+  windows-x64:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar comprobaciones
+        run: npm run verificar
+
+      - name: Leer versión
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Comprobar versión del tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          PKG_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $tag = $env:TAG_NAME.TrimStart("v")
+          if ($tag -ne $env:PKG_VERSION) {
+            throw "El tag $env:TAG_NAME no coincide con package.json ($env:PKG_VERSION)."
+          }
+
+      - name: Construir aplicación sin instalador
+        run: npm run dist:win:dir
+
+      - name: Verificar metadatos del ejecutable
+        shell: pwsh
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $exe = "dist/win-unpacked/H-IMAGO.exe"
+          if (-not (Test-Path $exe)) { throw "No se encontró $exe" }
+          $v = (Get-Item $exe).VersionInfo
+          Write-Host "ProductName=$($v.ProductName)"
+          Write-Host "FileDescription=$($v.FileDescription)"
+          Write-Host "FileVersion=$($v.FileVersion)"
+          Write-Host "CompanyName=$($v.CompanyName)"
+          if ($v.ProductName -ne "H-IMAGO") { throw "ProductName incorrecto: $($v.ProductName)" }
+          if (-not $v.FileVersion.StartsWith($env:PKG_VERSION)) { throw "FileVersion incorrecta: $($v.FileVersion)" }
+          if ($v.CompanyName -notlike "*H-IMAGO*") { throw "CompanyName incorrecto: $($v.CompanyName)" }
+
+      - name: Comprobar configuración de firma
+        id: signpath
+        shell: pwsh
+        env:
+          REQUESTED: ${{ inputs.sign }}
+          REF: ${{ github.ref }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          $requested = $env:REQUESTED -ne "false"
+          $configured = [bool]$env:SIGNPATH_ORGANIZATION_ID -and [bool]$env:SIGNPATH_PROJECT_SLUG -and [bool]$env:SIGNPATH_SIGNING_POLICY_SLUG -and [bool]$env:SIGNPATH_API_TOKEN
+          $enabled = $requested -and $configured
+          "enabled=$($enabled.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if (-not $configured) {
+            if ($env:REF -like "refs/tags/*") {
+              throw "Un tag de release requiere la configuración de SignPath."
+            }
+            Write-Warning "SignPath no está configurado; la build quedará sin firmar."
+          } elseif (-not $requested) {
+            Write-Warning "Firma desactivada manualmente; la build quedará sin firmar."
+          }
+
+      - name: Subir ejecutable sin firmar
+        if: steps.signpath.outputs.enabled == 'true'
+        id: upload-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app-exe
+          path: dist/win-unpacked/H-IMAGO.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Firmar ejecutable con SignPath
+        if: steps.signpath.outputs.enabled == 'true'
+        id: sign-app
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-app
+
+      - name: Instalar ejecutable firmado
+        if: steps.signpath.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem "signed-app" -Recurse -Filter "H-IMAGO.exe" | Select-Object -First 1
+          if (-not $signed) {
+            $zip = Get-ChildItem "signed-app" -Recurse -Filter "*.zip" | Select-Object -First 1
+            if ($zip) {
+              Expand-Archive -Path $zip.FullName -DestinationPath "signed-app" -Force
+              $signed = Get-ChildItem "signed-app" -Recurse -Filter "H-IMAGO.exe" | Select-Object -First 1
+            }
+          }
+          if (-not $signed) { throw "No se encontró el ejecutable firmado." }
+          Copy-Item $signed.FullName "dist/win-unpacked/H-IMAGO.exe" -Force
+          $sig = Get-AuthenticodeSignature "dist/win-unpacked/H-IMAGO.exe"
+          Write-Host "Estado: $($sig.Status)"
+          Write-Host "Firmante: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne "Valid") { throw "La firma del ejecutable no es válida." }
+          if (-not $sig.SignerCertificate -or $sig.SignerCertificate.Subject -notlike "*SignPath Foundation*") {
+            throw "El firmante no es SignPath Foundation."
+          }
+
+      - name: Construir instalador
+        run: npm run dist:win:installer
+
+      - name: Comprobar instalador
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem "dist" -Filter "H-IMAGO-*-Setup.exe" | Select-Object -First 1
+          if (-not $installer) { throw "No se generó el instalador." }
+          Write-Host "Instalador: $($installer.FullName) ($($installer.Length) bytes)"
+
+      - name: Crear ZIP portable
+        shell: pwsh
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $zip = "dist/H-IMAGO-${env:PKG_VERSION}-win-x64-portable.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path "dist/win-unpacked/*" -DestinationPath $zip -CompressionLevel Optimal -Force
+          if (-not (Test-Path $zip)) { throw "No se creó el ZIP portable." }
+
+      - name: Subir instalador sin firmar
+        if: steps.signpath.outputs.enabled == 'true'
+        id: upload-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: dist/H-IMAGO-*-Setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Firmar instalador con SignPath
+        if: steps.signpath.outputs.enabled == 'true'
+        id: sign-installer
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-installer
+
+      - name: Instalar instalador firmado
+        if: steps.signpath.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem "signed-installer" -Recurse -Filter "H-IMAGO-*-Setup.exe" | Select-Object -First 1
+          if (-not $signed) {
+            $zip = Get-ChildItem "signed-installer" -Recurse -Filter "*.zip" | Select-Object -First 1
+            if ($zip) {
+              Expand-Archive -Path $zip.FullName -DestinationPath "signed-installer" -Force
+              $signed = Get-ChildItem "signed-installer" -Recurse -Filter "H-IMAGO-*-Setup.exe" | Select-Object -First 1
+            }
+          }
+          if (-not $signed) { throw "No se encontró el instalador firmado." }
+          Copy-Item $signed.FullName "dist/" -Force
+          $installer = Get-ChildItem "dist" -Filter "H-IMAGO-*-Setup.exe" | Select-Object -First 1
+          $sig = Get-AuthenticodeSignature $installer.FullName
+          Write-Host "Estado: $($sig.Status)"
+          Write-Host "Firmante: $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne "Valid") { throw "La firma del instalador no es válida." }
+          if (-not $sig.SignerCertificate -or $sig.SignerCertificate.Subject -notlike "*SignPath Foundation*") {
+            throw "El firmante no es SignPath Foundation."
+          }
+
+      - name: Generar sumas SHA-256
+        shell: pwsh
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $files = @(
+            "dist/H-IMAGO-${env:PKG_VERSION}-Setup.exe",
+            "dist/H-IMAGO-${env:PKG_VERSION}-win-x64-portable.zip"
+          )
+          $lines = foreach ($file in $files) {
+            if (-not (Test-Path $file)) { throw "Falta $file" }
+            "$((Get-FileHash $file -Algorithm SHA256).Hash)  $(Split-Path $file -Leaf)"
+          }
+          $lines | Set-Content "dist/SHA256SUMS-windows.txt" -Encoding ascii
+          Get-Content "dist/SHA256SUMS-windows.txt"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/H-IMAGO-*-Setup.exe
+            dist/H-IMAGO-*-win-x64-portable.zip
+
+      - name: Resumen de firma
+        shell: pwsh
+        env:
+          SIGNED: ${{ steps.signpath.outputs.enabled }}
+        run: |
+          if ($env:SIGNED -eq "true") {
+            "Firma: SignPath Foundation, verificada en el workflow." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "Firma: no configurada; los artefactos se han generado sin firmar." >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Publicar artefactos de la build
+        uses: actions/upload-artifact@v4
+        with:
+          name: H-IMAGO-windows-x64
+          path: |
+            dist/H-IMAGO-*-Setup.exe
+            dist/H-IMAGO-*-win-x64-portable.zip
+            dist/SHA256SUMS-windows.txt
+          if-no-files-found: error
+          retention-days: 30
