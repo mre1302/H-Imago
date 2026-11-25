@@ -33,7 +33,7 @@ También puedes ver todos los archivos en la [página de la release](https://git
 
 > **Nota para Windows:** el instalador de la versión 0.0.28 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
 >
-> **Firma de código:** a partir de la versión 0.0.29, las builds de Windows se firman con SignPath.io y el certificado de SignPath Foundation. Consulta la [política de firma de código](CODE_SIGNING.md).
+> **Firma de código:** cuando SignPath Foundation apruebe la solicitud, las builds de Windows se firmarán con SignPath.io y el certificado de SignPath Foundation. Consulta la [política de firma de código](CODE_SIGNING.md).
 
 **Requisitos:** Windows 10/11 de 64 bits o Linux de 64 bits. No hace falta instalar Node.js, Git ni una base de datos. En modo personal, SQLite va incluido.
 

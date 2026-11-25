@@ -3,8 +3,8 @@
 Free code signing provided by SignPath.io, certificate by SignPath Foundation.
 
 H-IMAGO is a free, open-source desktop application for historical prosopography and
-the visualization of historical social networks. Windows builds are code-signed from
-version 0.0.29 onward.
+the visualization of historical social networks. Windows builds will be code-signed
+from the first release published after SignPath Foundation approves the project.
 
 ## Signed artifacts
 
@@ -93,5 +93,5 @@ GitHub attestation.
 - Issues and questions: <https://github.com/mre1302/H-Imago/discussions>
 - Email: <contacto@h-imago.org>
 
-This policy applies to the Windows artifacts published from version 0.0.29 onward.
-Older releases, including 0.0.28, were published unsigned.
+This policy applies to Windows artifacts published after SignPath Foundation approves
+the project. Older releases, including 0.0.28, were published unsigned.
