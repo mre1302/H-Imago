@@ -1,4 +1,0 @@
-Configuración de referencia de SignPath para H-IMAGO.
-Los XML se pegan en la configuración de artefactos del proyecto en SignPath.io.
-El workflow de GitHub no lee esta carpeta.
-No se guardan tokens ni secretos aquí.

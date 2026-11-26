@@ -32,8 +32,6 @@ Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación pro
 También puedes ver todos los archivos en la [página de la release](https://github.com/mre1302/H-Imago/releases/tag/v0.0.29). Para futuras versiones, consulta [Releases](https://github.com/mre1302/H-Imago/releases).
 
 > **Nota para Windows:** el instalador de la versión 0.0.29 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
->
-> **Firma de código:** cuando SignPath Foundation apruebe la solicitud, las builds de Windows se firmarán con SignPath.io y el certificado de SignPath Foundation. Consulta la [política de firma de código](CODE_SIGNING.md).
 
 **Requisitos:** Windows 10/11 de 64 bits o Linux de 64 bits. No hace falta instalar Node.js, Git ni una base de datos. En modo personal, SQLite va incluido.
 
@@ -52,7 +50,6 @@ En Windows (PowerShell):
 
 ```powershell
 Get-FileHash .\H-IMAGO-0.0.29-Setup.exe -Algorithm SHA256
-Get-AuthenticodeSignature .\H-IMAGO-0.0.29-Setup.exe
 ```
 
 Las builds de Linux no llevan firma Authenticode; su integridad se comprueba con
@@ -77,9 +74,8 @@ gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
   [`docs/NRELACIONES.md`](docs/NRELACIONES.md).
 - **Datos y estabilidad**: migraciones V9 y V10, sugerencias de bloques y mejoras
   de importación de cuadernos y proyectos.
-- **Documentación y firma**: se publican la arquitectura, la metodología del
-  Análisis RSH, la matriz de relaciones y la configuración de referencia de
-  SignPath en [`.signpath/README.md`](.signpath/README.md).
+- **Documentación**: se publican la arquitectura, la metodología del Análisis
+  RSH y la matriz de relaciones.
 
 ## Capturas
 
@@ -90,14 +86,14 @@ gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
       <br><sub>Inicio y proyectos guardados</sub>
     </td>
     <td width="50%">
-      <img src="docs/capturas/02-grafo-detalle.jpg" alt="Detalle de la red con una entidad seleccionada y sus relaciones" width="100%">
-      <br><sub>Detalle de la red y relaciones</sub>
+      <img src="docs/capturas/grafo-detalle-williams.jpg" alt="Detalle de la red con una entidad seleccionada y sus relaciones" width="100%">
+      <br><sub>Nodo seleccionado y relaciones</sub>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="docs/capturas/03-grafo-etiquetas.jpg" alt="Grafo con etiquetas de entidades" width="100%">
-      <br><sub>Grafo con etiquetas</sub>
+      <img src="docs/capturas/grafo-analisis-rsh.jpg" alt="Panel de Análisis RSH con la red completa y las métricas disponibles" width="100%">
+      <br><sub>Análisis RSH</sub>
     </td>
     <td width="50%">
       <img src="docs/capturas/04-georreferenciador.png" alt="Georreferenciador con mapa" width="100%">
@@ -631,9 +627,6 @@ src/
   interpretación y rendimiento.
 - [`docs/NRELACIONES.md`](docs/NRELACIONES.md): matriz vigente de los 183 tipos
   de relación.
-- [`CODE_SIGNING.md`](CODE_SIGNING.md): política y proceso de firma.
-- [`.signpath/README.md`](.signpath/README.md): configuración de referencia de
-  los artefactos de SignPath.
 
 ## Contribuir
 

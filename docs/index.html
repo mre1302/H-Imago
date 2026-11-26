@@ -16,12 +16,12 @@
   <meta property="og:title" content="H-IMAGO — Prosopografía y redes históricas">
   <meta property="og:description" content="Una aplicación de escritorio para organizar, relacionar y analizar información procedente de fuentes documentales.">
   <meta property="og:url" content="https://mre1302.github.io/H-Imago/">
-  <meta property="og:image" content="https://mre1302.github.io/H-Imago/capturas/02-grafo-detalle.jpg">
+  <meta property="og:image" content="https://mre1302.github.io/H-Imago/capturas/grafo-detalle-williams.jpg">
   <meta property="og:image:alt" content="Vista de una red histórica en H-IMAGO">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="H-IMAGO — Prosopografía y redes históricas">
   <meta name="twitter:description" content="H-IMAGO es una aplicación de escritorio para el análisis prosopográfico y la visualización de redes sociales.">
-  <meta name="twitter:image" content="https://mre1302.github.io/H-Imago/capturas/02-grafo-detalle.jpg">
+  <meta name="twitter:image" content="https://mre1302.github.io/H-Imago/capturas/grafo-detalle-williams.jpg">
 
   <link rel="stylesheet" href="assets/estilos.css">
 
@@ -33,7 +33,7 @@
     "applicationCategory": "EducationalApplication",
     "applicationSubCategory": "Digital Humanities",
     "operatingSystem": "Windows 10/11, Linux",
-    "softwareVersion": "0.0.28",
+    "softwareVersion": "0.0.29",
     "license": "https://opensource.org/licenses/MIT",
     "url": "https://mre1302.github.io/H-Imago/",
     "downloadUrl": "https://github.com/mre1302/H-Imago/releases/latest",
@@ -50,7 +50,7 @@
   <div class="announcement">
     <div class="container announcement-inner">
       <span class="announcement-dot" aria-hidden="true"></span>
-      <span><strong>H-IMAGO 0.0.28</strong> ya está disponible.</span>
+      <span><strong>H-IMAGO 0.0.29</strong> ya está disponible.</span>
       <a href="#descargas">Descargar <span aria-hidden="true">→</span></a>
     </div>
   </div>
@@ -112,7 +112,7 @@
           A diferencia de las herramientas convencionales de registro documental, H-IMAGO no se limita a almacenar información sobre individuos, acontecimientos o documentos. Integra esos datos en un <em>sistema de relaciones entre entidades</em>, cada una de las cuales permite reconstruir trayectorias individuales y colectivas, descubrir conexiones y estructuras del tejido social.</p>
         </div>
 
-        <ol class="about-method" aria-label="Tres niveles de análisis">
+        <ol class="about-method" aria-label="Cuatro niveles de análisis">
           <li>
             <a class="method-step method-step--link" href="#fichas">
               <span class="method-icon" aria-hidden="true">
@@ -148,6 +148,19 @@
                 <h3><span class="method-number">03</span> Órbitas relacionales</h3>
                 <p>La interacción entre las distintas entidades se construye a través de 183 tipos de relaciones clasificadas en 8 categorías.</p>
                 <span class="method-link-label">Ver órbitas <span aria-hidden="true">→</span></span>
+              </div>
+            </a>
+          </li>
+
+          <li>
+            <a class="method-step method-step--link" href="#funciones-adicionales">
+              <span class="method-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="4.2"></circle><path d="m13.2 13.2 4.3 4.3"></path><path d="M4 20c.6-2.7 2.2-4 5-4"></path></svg>
+              </span>
+              <div class="method-body">
+                <h3><span class="method-number">04</span> Funciones adicionales</h3>
+                <p>Georreferenciador y Búsqueda general para situar el territorio y localizar cualquier información del corpus.</p>
+                <span class="method-link-label">Ver funciones <span aria-hidden="true">→</span></span>
               </div>
             </a>
           </li>
@@ -334,7 +347,7 @@
               <p class="eyebrow chapter-label"><span class="chapter-index">03</span> Órbitas relacionales</p>
               <h2>Trayectorias, movilidad y cambio</h2>
             </div>
-            <p class="chapter-lead">La interacción entre las distintas entidades se construye a través de 183 tipos de relaciones clasificadas en 8 categorías.</p>
+            <p class="chapter-lead">La interacción entre las distintas entidades se construye a través de 183 tipos de relaciones clasificadas en 8 categorías. <a class="inline-highlight" href="https://github.com/mre1302/H-Imago/blob/main/docs/NRELACIONES.md" rel="noopener">Consultar la matriz</a>.</p>
           </header>
 
           <div class="chapter-prose chapter-prose--single">
@@ -424,59 +437,40 @@
             <p class="chapter-lead">H-IMAGO permite representar gráficamente las conexiones entre personas, instituciones, lugares y patrimonios mediante una red interactiva de nodos y relaciones.</p>
           </header>
 
-          <div class="chapter-aside">
-            <div class="chapter-prose chapter-prose--single">
-              <p>Desde Vista de Grafo es posible explorar las conexiones entre las distintas entidades, consultar vínculos y establecer filtros por entidad, categoría y rango temporal.</p>
-              <p>Adicionalmente, se ofrece la posibilidad de exportar capturas de pantalla de una red egocentrada o del conjunto de nodos.</p>
-            </div>
-
-            <a class="function-link" href="#funciones-adicionales">
-              <span class="function-link-body">
-                <span class="function-link-label">Siguiente · 03.3</span>
-                <span class="function-link-title">Funciones adicionales</span>
-                <span class="function-link-note">Georreferenciador y Búsqueda general.</span>
-              </span>
-              <span class="function-link-arrow" aria-hidden="true">→</span>
-            </a>
-          </div>
-
           <div class="chapter-prose chapter-prose--single">
-            <p><span class="pill pill--gold">Próxima versión</span> La vista de grafo amplía sus herramientas para leer la red con más detalle:</p>
-            <ul>
-              <li><strong>Filtros y estado.</strong> Paneles de entidades y relaciones, barra de estado con lo visible, filtros activos, procedencia, nodos ocultos y retorno desde una vecindad.</li>
-              <li><strong>Aristas y detalle.</strong> Flechas de dirección, agrupación de relaciones paralelas y detalle del vínculo por tipo, periodo, procedencia y fuentes.</li>
-              <li><strong>Nodo seleccionado.</strong> ID, notas, fuentes y acciones para abrir la ficha, fijar u ocultar el nodo y aislar su vecindad a uno o dos saltos.</li>
-              <li><strong>Temporalidad.</strong> Histograma de relaciones activas y reproducción con ventana y velocidad.</li>
-              <li><strong>Vistas y tabla.</strong> Guardar combinaciones de filtros, ver la red como tabla, imprimir, exportar a CSV o Excel y navegar con el teclado.</li>
-              <li><strong>Exportación PNG.</strong> Título, leyenda, resumen de filtros y versión imprimible en blanco y negro.</li>
-              <li><strong>Análisis RSH.</strong> Módulo opcional de análisis de redes sociales históricas: grado, intermediación, cercanía, vector propio/PageRank, comunidades Leiden, densidad y componentes. Usa la red completa o la visible y exporta los resultados a CSV.</li>
-            </ul>
-            <p>El <strong>Análisis RSH</strong> se calcula en local y no hace nada hasta que se solicita. Sus indicadores describen la red documentada, no la red histórica completa.</p>
+            <p>Desde Vista de Grafo es posible explorar las conexiones entre las distintas entidades, consultar vínculos y establecer filtros por entidad, categoría y rango temporal.</p>
+            <p>Adicionalmente, es posible guardar y exportar capturas de pantalla, visualizar rangos de vecindad, fijar o excluir nodos, visualizar la matriz en una tabla, entre muchas otras posibilidades.</p>
+            <p>Desde la versión 0.0.29 se incorpora <strong>Análisis RSH</strong>, el cual se calcula en local, solo a solicitud del usuario. Sus indicadores describen la red documentada, no la red histórica completa. Consulta la <a class="inline-highlight" href="https://github.com/mre1302/H-Imago/blob/main/docs/ANALISIS-RSH.md" rel="noopener">metodología y las advertencias</a>.</p>
           </div>
 
-          <div class="chapter-gallery">
-            <figure class="media-figure media-figure--lead">
-              <button class="gallery-button" type="button" data-full="capturas/temporalidad.jpg" data-caption="Vista de Grafo con filtro temporal y red de entidades" aria-label="Ampliar Vista de Grafo con filtro temporal">
-                <img src="capturas/temporalidad.jpg" alt="Vista de Grafo con la barra de temporalidad y la red de entidades y relaciones" loading="lazy" width="1472" height="944">
+          <div class="chapter-gallery chapter-gallery--pair">
+            <figure class="media-figure">
+              <button class="gallery-button" type="button" data-full="capturas/ver-como-tabla.jpg" data-caption="Vista de la red como tabla con entidades, relaciones visibles y vínculos" aria-label="Ampliar vista de la red como tabla">
+                <img src="capturas/ver-como-tabla.jpg" alt="Vista de la red como tabla con entidades, relaciones visibles y vínculos" loading="lazy" width="1600" height="1215">
               </button>
-              <figcaption><span>Temporalidad</span> Red interactiva y filtros por entidad, categoría y rango temporal.</figcaption>
+              <figcaption><span>Tabla</span> Entidades, relaciones y vínculos.</figcaption>
             </figure>
 
-            <div class="chapter-gallery-side">
-              <figure class="media-figure">
-                <button class="gallery-button" type="button" data-full="capturas/02-grafo-detalle.jpg" data-caption="Detalle de la red y relaciones" aria-label="Ampliar detalle de la red y relaciones">
-                  <img src="capturas/02-grafo-detalle.jpg" alt="Detalle de la red con una persona seleccionada y sus relaciones" loading="lazy" width="1354" height="829">
-                </button>
-                <figcaption><span>Red</span> Relaciones y órbitas.</figcaption>
-              </figure>
+            <figure class="media-figure">
+              <button class="gallery-button" type="button" data-full="capturas/grafo-detalle-williams.jpg" data-caption="Grafo de la red con una persona seleccionada y sus relaciones y fuentes" aria-label="Ampliar detalle de la red y relaciones">
+                <img src="capturas/grafo-detalle-williams.jpg" alt="Grafo de la red con una persona seleccionada y sus relaciones y fuentes" loading="lazy" width="1600" height="1166">
+              </button>
+              <figcaption><span>Nodo seleccionado</span> Relaciones y fuentes.</figcaption>
+            </figure>
 
-              <figure class="media-figure">
-                <button class="gallery-button" type="button" data-full="capturas/03-grafo-etiquetas.jpg" data-caption="Grafo con etiquetas de entidades" aria-label="Ampliar grafo con etiquetas de entidades">
-                  <img src="capturas/03-grafo-etiquetas.jpg" alt="Grafo de la red histórica con etiquetas de entidades" loading="lazy" width="1353" height="833">
-                </button>
-                <figcaption><span>Estructura</span> Etiquetas y conexiones.</figcaption>
-              </figure>
-            </div>
+            <figure class="media-figure">
+              <button class="gallery-button" type="button" data-full="capturas/grafo-temporalidad.jpg" data-caption="Vista de Grafo con el filtro temporal 1816-1820 y el histograma de relaciones" aria-label="Ampliar vista de Grafo con filtro temporal">
+                <img src="capturas/grafo-temporalidad.jpg" alt="Vista de Grafo con el filtro temporal 1816-1820 y el histograma de relaciones" loading="lazy" width="1600" height="1219">
+              </button>
+              <figcaption><span>Temporalidad</span> Histograma y filtro por años.</figcaption>
+            </figure>
+
+            <figure class="media-figure">
+              <button class="gallery-button" type="button" data-full="capturas/grafo-analisis-rsh.jpg" data-caption="Panel de Análisis RSH con la red completa y las métricas disponibles" aria-label="Ampliar panel de Análisis RSH">
+                <img src="capturas/grafo-analisis-rsh.jpg" alt="Panel de Análisis RSH con la red completa y las métricas disponibles" loading="lazy" width="1600" height="1216">
+              </button>
+              <figcaption><span>Análisis RSH</span> Red completa y métricas.</figcaption>
+            </figure>
           </div>
 
           <footer class="chapter-foot">
@@ -492,8 +486,8 @@
         <div class="chapter">
           <header class="chapter-head">
             <div class="chapter-title">
-              <p class="eyebrow chapter-label"><span class="chapter-index">03.3</span> Órbitas relacionales</p>
-              <h2>Funciones adicionales</h2>
+              <p class="eyebrow chapter-label"><span class="chapter-index">04</span> Funciones adicionales</p>
+              <h2>Georreferenciador y Búsqueda general</h2>
             </div>
             <p class="chapter-lead">Dos herramientas complementarias para situar las relaciones en el territorio y localizar cualquier información del corpus.</p>
           </header>
@@ -529,8 +523,8 @@
           </div>
 
           <footer class="chapter-foot">
-            <a class="detail-back" href="#individuo-red">← Volver a Individuo y red</a>
-            <span class="chapter-folio" aria-hidden="true">H-IMAGO · 03.3</span>
+            <a class="detail-back" href="#que-es">← Volver a Qué es H-IMAGO</a>
+            <span class="chapter-folio" aria-hidden="true">H-IMAGO · 04</span>
           </footer>
         </div>
       </div>
@@ -553,17 +547,31 @@
           </figure>
 
           <figure class="media-figure">
-            <button class="gallery-button" type="button" data-full="capturas/02-grafo-detalle.jpg" data-caption="Detalle de la red y relaciones" aria-label="Ampliar captura: detalle de la red y relaciones">
-              <img src="capturas/02-grafo-detalle.jpg" alt="Detalle de la red con una persona seleccionada y sus relaciones" loading="lazy" width="1354" height="829">
+            <button class="gallery-button" type="button" data-full="capturas/ver-como-tabla.jpg" data-caption="Vista de la red como tabla con entidades, relaciones visibles y vínculos" aria-label="Ampliar captura: vista de la red como tabla">
+              <img src="capturas/ver-como-tabla.jpg" alt="Vista de la red como tabla con entidades, relaciones visibles y vínculos" loading="lazy" width="1600" height="1215">
             </button>
-            <figcaption>Detalle de la red y relaciones</figcaption>
+            <figcaption>Ver como tabla</figcaption>
           </figure>
 
           <figure class="media-figure">
-            <button class="gallery-button" type="button" data-full="capturas/03-grafo-etiquetas.jpg" data-caption="Grafo con etiquetas de entidades" aria-label="Ampliar captura: grafo con etiquetas">
-              <img src="capturas/03-grafo-etiquetas.jpg" alt="Grafo de la red histórica con etiquetas de entidades" loading="lazy" width="1353" height="833">
+            <button class="gallery-button" type="button" data-full="capturas/grafo-detalle-williams.jpg" data-caption="Grafo de la red con una persona seleccionada y sus relaciones y fuentes" aria-label="Ampliar captura: detalle de la red y relaciones">
+              <img src="capturas/grafo-detalle-williams.jpg" alt="Grafo de la red con una persona seleccionada y sus relaciones y fuentes" loading="lazy" width="1600" height="1166">
             </button>
-            <figcaption>Grafo con etiquetas</figcaption>
+            <figcaption>Nodo seleccionado</figcaption>
+          </figure>
+
+          <figure class="media-figure">
+            <button class="gallery-button" type="button" data-full="capturas/grafo-temporalidad.jpg" data-caption="Vista de Grafo con el filtro temporal 1816-1820 y el histograma de relaciones" aria-label="Ampliar captura: temporalidad de la red">
+              <img src="capturas/grafo-temporalidad.jpg" alt="Vista de Grafo con el filtro temporal 1816-1820 y el histograma de relaciones" loading="lazy" width="1600" height="1219">
+            </button>
+            <figcaption>Temporalidad de la red</figcaption>
+          </figure>
+
+          <figure class="media-figure">
+            <button class="gallery-button" type="button" data-full="capturas/grafo-analisis-rsh.jpg" data-caption="Panel de Análisis RSH con la red completa y las métricas disponibles" aria-label="Ampliar captura: Análisis RSH">
+              <img src="capturas/grafo-analisis-rsh.jpg" alt="Panel de Análisis RSH con la red completa y las métricas disponibles" loading="lazy" width="1600" height="1216">
+            </button>
+            <figcaption>Análisis RSH</figcaption>
           </figure>
 
           <figure class="media-figure">
@@ -703,12 +711,6 @@
             <figcaption>Relaciones automatizadas</figcaption>
           </figure>
 
-          <figure class="media-figure">
-            <button class="gallery-button" type="button" data-full="capturas/temporalidad.jpg" data-caption="Vista de Grafo con filtro temporal y red de entidades" aria-label="Ampliar captura: temporalidad de la red">
-              <img src="capturas/temporalidad.jpg" alt="Vista de Grafo con la barra de temporalidad y la red de entidades y relaciones" loading="lazy" width="1472" height="944">
-            </button>
-            <figcaption>Temporalidad de la red</figcaption>
-          </figure>
         </div>
       </div>
     </section>
@@ -748,28 +750,28 @@
             <p class="eyebrow">Descargas</p>
             <h2>Descargar H-IMAGO</h2>
             <p>Descarga la versión que corresponda a tu sistema. No necesitas clonar el repositorio ni saber usar Git.</p>
-            <p class="download-version"><span class="pill pill--gold">Versión 0.0.28</span> <span>20 de noviembre de 2026</span></p>
+            <p class="download-version"><span class="pill pill--gold">Versión 0.0.29</span> <span>27 de noviembre de 2026</span></p>
             <p class="download-note">Requisitos: Windows 10/11 de 64 bits o Linux de 64 bits. En modo personal no hace falta instalar una base de datos.</p>
             <a class="text-link" href="https://github.com/mre1302/H-Imago/releases" rel="noopener">Ver todas las versiones <span aria-hidden="true">→</span></a>
           </div>
 
           <div class="download-grid">
-            <a class="download-card download-card--primary" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-Setup.exe">
+            <a class="download-card download-card--primary" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29-Setup.exe">
               <span class="download-os">Windows</span>
               <strong>Instalador .exe</strong>
               <span>Recomendado · 64 bits</span>
             </a>
-            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-win-x64-portable.zip">
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29-win-x64-portable.zip">
               <span class="download-os">Windows</span>
               <strong>Versión portable</strong>
               <span>ZIP · sin instalación</span>
             </a>
-            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28.AppImage">
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29.AppImage">
               <span class="download-os">Linux</span>
               <strong>AppImage</strong>
               <span>Portable · mayoría de distros</span>
             </a>
-            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.28/h-imago_0.0.28_amd64.deb">
+            <a class="download-card" href="https://github.com/mre1302/H-Imago/releases/download/v0.0.29/h-imago_0.0.29_amd64.deb">
               <span class="download-os">Debian / Ubuntu</span>
               <strong>Paquete .deb</strong>
               <span>64 bits · instalación integrada</span>
@@ -777,7 +779,7 @@
           </div>
         </div>
 
-        <p class="fine-print">El instalador de Windows de la versión 0.0.28 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia; si decides continuar, pulsa <strong>Más información → Ejecutar de todas formas</strong>. Cuando SignPath Foundation apruebe la solicitud, las builds de Windows se firmarán con SignPath Foundation; consulta la <a href="firma-de-codigo.html">política de firma de código</a>.</p>
+        <p class="fine-print">El instalador de Windows de la versión 0.0.29 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia; si decides continuar, pulsa <strong>Más información → Ejecutar de todas formas</strong>.</p>
       </div>
     </section>
 
@@ -793,11 +795,11 @@
           <article class="news-feature">
             <div class="news-meta">
               <span class="pill pill--gold">Última novedad</span>
-              <time datetime="2026-11-20">20 nov 2026</time>
+              <time datetime="2026-11-27">27 nov 2026</time>
             </div>
-            <h3>H-IMAGO 0.0.28 ya está disponible</h3>
-            <p>Una versión de consolidación: mejoras de integridad de datos, edición de cuadernos, importación de bloques y rendimiento de búsqueda y grafo.</p>
-            <a class="text-link" href="https://github.com/mre1302/H-Imago/releases/tag/v0.0.28" rel="noopener">Leer la release <span aria-hidden="true">→</span></a>
+            <h3>H-IMAGO 0.0.29 ya está disponible</h3>
+            <p>Una versión centrada en la lectura de la red: Análisis RSH, nuevos filtros y detalles del grafo, 183 tipos de relación y mejoras de datos e importación.</p>
+            <a class="text-link" href="https://github.com/mre1302/H-Imago/releases/tag/v0.0.29" rel="noopener">Leer la release <span aria-hidden="true">→</span></a>
           </article>
 
           <div class="news-list">
@@ -862,7 +864,7 @@
           <ul class="link-list">
             <li><a href="https://github.com/mre1302/H-Imago" rel="noopener">Ver el código en GitHub <span aria-hidden="true">→</span></a></li>
             <li><a href="https://github.com/mre1302/H-Imago/blob/main/CONTRIBUTING.md" rel="noopener">Cómo contribuir <span aria-hidden="true">→</span></a></li>
-            <li><a href="https://doi.org/10.5281/zenodo.24475875" rel="noopener">Cómo citar H-IMAGO (DOI) <span aria-hidden="true">→</span></a></li>
+            <li><a href="https://doi.org/10.5281/zenodo.24475874" rel="noopener">Cómo citar H-IMAGO (DOI) <span aria-hidden="true">→</span></a></li>
             <li><a href="https://github.com/sponsors/mre1302" rel="noopener">Apoyar el mantenimiento <span aria-hidden="true">→</span></a></li>
             <li><a href="https://github.com/mre1302" rel="noopener">Sobre el desarrollador <span aria-hidden="true">→</span></a></li>
           </ul>
@@ -883,14 +885,13 @@
       <nav class="footer-nav" aria-label="Enlaces del pie">
         <a href="https://github.com/mre1302/H-Imago" rel="noopener">GitHub</a>
         <a href="https://github.com/mre1302/H-Imago/releases" rel="noopener">Releases</a>
-        <a href="firma-de-codigo.html">Política de firma</a>
         <a href="https://github.com/mre1302/H-Imago/discussions" rel="noopener">Discussions</a>
         <a href="https://github.com/mre1302/H-Imago/blob/main/LICENSE" rel="noopener">Licencia MIT</a>
         <a href="contenido.html">Aviso de contenido</a>
       </nav>
     </div>
     <div class="container footer-bottom">
-      <span>© 2026 Proyecto H-IMAGO · Versión 0.0.28</span>
+      <span>© 2026 Proyecto H-IMAGO · Versión 0.0.29</span>
       <span>Investigación histórica y humanidades digitales · Contenido del sitio con derechos reservados.</span>
     </div>
   </footer>
