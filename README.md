@@ -204,8 +204,8 @@ npm run verificar  # lint + check + test
 
 La integración MySQL se activa con `HIMAGO_TEST_MYSQL=1` y las variables
 `HIMAGO_MYSQL_*`; GitHub Actions la ejecuta contra un servicio MySQL 8.0. La
-arquitectura, el flujo `.ods → generador → JS` y las migraciones se documentan
-en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
+arquitectura, el flujo `.ods → generador → JS` y las migraciones forman parte
+de la documentación interna del proyecto, que no se distribuye con el repositorio.
 
 
 Al primer arranque la aplicación crea automáticamente la base local SQLite y
@@ -340,7 +340,7 @@ proyecto):
   Se respetan las relaciones `EDITADA`, las exclusiones y las entidades
   existentes; al re-guardar se actualizan las automatizadas y al eliminar el
   bloque se conservan las editadas. El detalle completo de las reglas de los
-  25 formularios está en [`docs/reglas-automatizacion.md`](docs/reglas-automatizacion.md).
+  25 formularios forma parte de la documentación interna del proyecto.
 - **Directorio alfabético**: al entrar en Personas, Instituciones, Lugares,
   Patrimonios o Fuentes, el panel derecho muestra un directorio con barra
   A–Z (+ Ñ) y tabla de la entidad; la letra filtra por inicial (en Personas la
@@ -354,7 +354,7 @@ proyecto):
   solapa con el rango elegido. Las relaciones sin datación permanecen visibles.
   Un contador indica cuántas entidades y relaciones quedan a la vista.
 - **Taxonomía de FUENTES**: dos niveles —14 categorías y 64 tipos de fuente—
-  según la tabla archivada en `docs/fuentes-taxonomia.ods`. La ficha de fuente
+  según la tabla de taxonomía interna del proyecto. La ficha de fuente
   ofrece la categoría y un selector de tipos dependiente; al elegir categoría
   sólo se muestran sus tipos, y al editar fuentes antiguas se conserva su tipo
   previo aunque no pertenezca a la taxonomía.
@@ -381,8 +381,8 @@ proyecto):
   cinco categorías. Cada bloque guarda su etiqueta temporal y espacial. Cada
   formulario se genera desde el esquema declarativo
   `formularios-bloques.js` (producido por
-  `scripts/generar-formularios-bloques.py` a partir de
-  `docs/formularios-bloques.ods`): secciones, campos (texto, área, año, fecha
+  `scripts/generar-formularios-bloques.py` a partir de la fuente local de
+  formularios, que no se distribuye): secciones, campos (texto, área, año, fecha
   histórica con calendario dual, lugar, institución, select), bloques de
   personas con vínculo a PERSONAS o creación directa, bloques de patrimonios con
   vínculo o creación, y grupos repetibles (Procesos judiciales e Inventarios
@@ -399,7 +399,7 @@ proyecto):
   muestra, bajo la cabecera, el **TÍTULO** y la **SIGNATURA** de la sección
   REGISTRO. El archivo
   `formularios-bloques.js` es generado: no se edita a mano; los cambios se hacen
-  en el ODS y se regeneran (ver `docs/ARQUITECTURA.md`).
+  en la fuente local de formularios y se regeneran con el script.
 - **Varias instituciones por persona**: en los roles de personas, cada línea
   EMPLEO/OFICIO + INSTITUCIÓN es un vínculo institucional independiente. Cada
   línea incorpora su propio **VINCULAR INSTITUCIÓN** y **＋ Crear institución**,
@@ -518,7 +518,7 @@ proyecto):
   ediciones o usar secciones distintas.
 
 La arquitectura detallada, el flujo `.ods → generador → JS` y las políticas de
-migración y pruebas están en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
+migración y pruebas forman parte de la documentación interna del proyecto.
 
 ## Estructura del código
 
@@ -553,10 +553,10 @@ src/
       taxonomia-relaciones.js   Taxonomía de RELACIONES (182 tipos · 8 categorías;
                                 restricciones de origen → destino)
       taxonomia-fuentes.js      Taxonomía de FUENTES (64 tipos · 14 categorías;
-                                fuente: docs/fuentes-taxonomia.ods)
+                                fuente interna no distribuida)
       taxonomia-bloques.js      Bloques de registro (periodos y 25 formularios
-                                de los siglos XVIII-XIX; fuente:
-                                docs/bloques-registro.ods)
+                                de los siglos XVIII-XIX; fuente interna no
+                                distribuida)
       fecha-historica.js        Parser y calendario histórico juliano/gregoriano
       entidades.js       Personas/Instituciones/Lugares/Patrimonios/Fuentes
       grafo.js           Vista de grafo (canvas + física)

@@ -1,7 +1,7 @@
 'use strict';
 
 /* H-IMAGO · Taxonomía de FUENTES
-   Fuente canónica: la tabla del proyecto (docs/fuentes-taxonomia.ods).
+   Fuente canónica: la tabla interna del proyecto, no distribuida.
    Dos niveles: CATEGORÍA → TIPO DE FUENTE. El formulario de fuentes ofrece la
    categoría y un selector de tipos dependiente de ella. */
 

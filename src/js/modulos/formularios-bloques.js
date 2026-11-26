@@ -1,7 +1,7 @@
 'use strict';
 
 /* H-IMAGO · Esquema declarativo de los BLOQUES DE REGISTRO
-   Generado desde docs/formularios-bloques.ods (no editar a mano).
+   Generado desde la fuente local de formularios (no distribuida; no editar a mano).
    Cada formulario declara secciones, campos, bloques de personas,
    patrimonios y grupos repetibles. */
 

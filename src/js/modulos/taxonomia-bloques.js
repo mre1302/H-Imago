@@ -1,7 +1,7 @@
 'use strict';
 
 /* H-IMAGO · Taxonomía de BLOQUES DE REGISTRO
-   Fuente canónica: la tabla del proyecto (docs/bloques-registro.ods).
+   Fuente canónica: la tabla interna del proyecto, no distribuida.
    Los bloques reproducen información textual de las fuentes para reconstruir
    después las redes de RELACIONES. Por ahora sólo están definidos los
    formularios de los SIGLOS XVIII-XIX; los demás periodos se irán añadiendo. */

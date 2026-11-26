@@ -5,13 +5,18 @@ Uso: python3 scripts/generar-formularios-bloques.py
 El esquema resultante es declarativo: secciones, campos, bloques de personas,
 patrimonios y grupos repetibles.
 
-Los ids se toman del libro de campo (docs/formularios-bloques-ids.json): cada
+La fuente ODS y el ledger de ids no se distribuyen con el repositorio. Se leen
+de HIMAGO_FORMULARIOS_ODS y HIMAGO_FORMULARIOS_IDS, o de
+../H-IMAGO-local/docs-interno/ por defecto.
+
+Los ids se toman del libro de campo local (formularios-bloques-ids.json): cada
 «formulario::NOMBRE::ocurrencia» conserva su id aunque se reordenen o inserten
 campos en el ODS; los nombres nuevos reciben el siguiente id libre del
 formulario. La línea REGISTRO se normaliza con TÍTULO (10), SIGNATURA (2) a su
 derecha y LUGAR (2).
 """
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -20,10 +25,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-DOCS = RAIZ / 'docs' / 'formularios-bloques.ods'
-ODS = DOCS if DOCS.exists() else Path('/home/manuel/Documentos/FORMULARIOS BLOQUES DE REGISTRO.ods')
+DOCS_SRC = Path(os.environ.get('HIMAGO_FORMULARIOS_DIR', RAIZ.parent / 'H-IMAGO-local' / 'docs-interno'))
+ODS = Path(os.environ.get('HIMAGO_FORMULARIOS_ODS', DOCS_SRC / 'formularios-bloques.ods'))
 SALIDA = RAIZ / 'src' / 'js' / 'modulos' / 'formularios-bloques.js'
-LEDGER = RAIZ / 'docs' / 'formularios-bloques-ids.json'
+LEDGER = Path(os.environ.get('HIMAGO_FORMULARIOS_IDS', DOCS_SRC / 'formularios-bloques-ids.json'))
 NS = '{urn:oasis:names:tc:opendocument:xmlns:table:1.0}'
 
 CATEGORIAS = {
@@ -346,6 +351,10 @@ def fijar_anchos_y_validar(formularios, ledger, nuevos):
 
 
 def main():
+    if not ODS.exists():
+        sys.exit(f'No se encuentra el ODS de formularios: {ODS}\nIndica la ruta con HIMAGO_FORMULARIOS_ODS o colócalo en {DOCS_SRC}.')
+    if not LEDGER.exists():
+        sys.exit(f'No se encuentra el ledger de formularios: {LEDGER}\nIndica la ruta con HIMAGO_FORMULARIOS_IDS o colócalo en {DOCS_SRC}.')
     filas = leer_filas()
     ledger = cargar_ledger()
     formularios = {}
@@ -375,11 +384,8 @@ def main():
         ledger.update(estado['nuevos'])
     LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-    DOCS.parent.mkdir(parents=True, exist_ok=True)
-    DOCS.write_bytes(ODS.read_bytes())
-
     js = ["'use strict';", '', '/* H-IMAGO · Esquema declarativo de los BLOQUES DE REGISTRO',
-          '   Generado desde docs/formularios-bloques.ods (no editar a mano).',
+          '   Generado desde la fuente local de formularios (no distribuida; no editar a mano).',
           '   Cada formulario declara secciones, campos, bloques de personas,',
           '   patrimonios y grupos repetibles. */', '',
           'const FORMULARIOS_BLOQUES = ' + json.dumps(formularios, ensure_ascii=False, indent=2) + ';', '',
