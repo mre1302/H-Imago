@@ -10,12 +10,12 @@ authors:
     given-names: "Manuel Alejandro"
     affiliation: "Proyecto H-IMAGO"
     orcid: "0000-0002-0238-8884"
-version: "0.0.28"
-date-released: "2026-11-20"
+version: "0.0.29"
+date-released: "2026-11-27"
 license: MIT
-doi: "10.5281/zenodo.24475875"
+doi: "10.5281/zenodo.24475874"
 repository-code: "https://github.com/mre1302/H-Imago"
-url: "https://doi.org/10.5281/zenodo.24475875"
+url: "https://doi.org/10.5281/zenodo.24475874"
 keywords:
   - prosopography
   - historical network analysis

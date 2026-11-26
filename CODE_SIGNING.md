@@ -20,7 +20,7 @@ signed executable and signed in a second request.
 ## Linux artifacts
 
 Linux artifacts are outside the scope of Authenticode and SignPath. Starting with
-the next public release, each release publishes `SHA256SUMS-linux.txt` and a GitHub build provenance
+version 0.0.29, each release publishes `SHA256SUMS-linux.txt` and a GitHub build provenance
 attestation for the AppImage and the `.deb` package. The workflow is
 [`.github/workflows/linux-release.yml`](.github/workflows/linux-release.yml).
 

@@ -9,7 +9,7 @@
 # H-IMAGO
 
 [![Web del proyecto](https://img.shields.io/badge/Web-mre1302.github.io%2FH--Imago-e0a92f?logo=githubpages&logoColor=white)](https://mre1302.github.io/H-Imago/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24475875.svg)](https://doi.org/10.5281/zenodo.24475875)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24475874.svg)](https://doi.org/10.5281/zenodo.24475874)
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y la **visualización de redes sociales históricas**.
@@ -20,18 +20,18 @@ Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación pro
 
 **No necesitas saber programar ni usar Git.** Descarga el archivo correspondiente a tu sistema y ábrelo.
 
-**Versión 0.0.28** · 20 de noviembre de 2026
+**Versión 0.0.29** · 27 de noviembre de 2026
 
 | Sistema | Descarga | Cómo se usa |
 |---|---|---|
-| **Windows 10/11 (64 bits)** | [**Instalador H-IMAGO**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-Setup.exe) | Recomendado. Abre el archivo y sigue el asistente. |
-| **Windows portable** | [**H-IMAGO portable (ZIP)**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28-win-x64-portable.zip) | Descomprime el ZIP y ejecuta `H-IMAGO.exe`. |
-| **Linux (AppImage)** | [**H-IMAGO AppImage**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/H-IMAGO-0.0.28.AppImage) | Dale permisos de ejecución (`chmod +x H-IMAGO-0.0.28.AppImage`) y ábrelo. |
-| **Debian / Ubuntu (64 bits)** | [**Paquete .deb**](https://github.com/mre1302/H-Imago/releases/download/v0.0.28/h-imago_0.0.28_amd64.deb) | Ábrelo con el instalador de paquetes o instálalo con `sudo apt install ./h-imago_0.0.28_amd64.deb`. |
+| **Windows 10/11 (64 bits)** | [**Instalador H-IMAGO**](https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29-Setup.exe) | Recomendado. Abre el archivo y sigue el asistente. |
+| **Windows portable** | [**H-IMAGO portable (ZIP)**](https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29-win-x64-portable.zip) | Descomprime el ZIP y ejecuta `H-IMAGO.exe`. |
+| **Linux (AppImage)** | [**H-IMAGO AppImage**](https://github.com/mre1302/H-Imago/releases/download/v0.0.29/H-IMAGO-0.0.29.AppImage) | Dale permisos de ejecución (`chmod +x H-IMAGO-0.0.29.AppImage`) y ábrelo. |
+| **Debian / Ubuntu (64 bits)** | [**Paquete .deb**](https://github.com/mre1302/H-Imago/releases/download/v0.0.29/h-imago_0.0.29_amd64.deb) | Ábrelo con el instalador de paquetes o instálalo con `sudo apt install ./h-imago_0.0.29_amd64.deb`. |
 
-También puedes ver todos los archivos en la [página de la release](https://github.com/mre1302/H-Imago/releases/tag/v0.0.28). Para futuras versiones, consulta [Releases](https://github.com/mre1302/H-Imago/releases).
+También puedes ver todos los archivos en la [página de la release](https://github.com/mre1302/H-Imago/releases/tag/v0.0.29). Para futuras versiones, consulta [Releases](https://github.com/mre1302/H-Imago/releases).
 
-> **Nota para Windows:** el instalador de la versión 0.0.28 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
+> **Nota para Windows:** el instalador de la versión 0.0.29 todavía no está firmado digitalmente. Es posible que SmartScreen muestre una advertencia. Si decides continuar, pulsa **Más información → Ejecutar de todas formas**.
 >
 > **Firma de código:** cuando SignPath Foundation apruebe la solicitud, las builds de Windows se firmarán con SignPath.io y el certificado de SignPath Foundation. Consulta la [política de firma de código](CODE_SIGNING.md).
 
@@ -41,8 +41,8 @@ También puedes ver todos los archivos en la [página de la release](https://git
 
 ### Verificar descargas
 
-A partir de la próxima versión pública, cada release incluye
-`SHA256SUMS-windows.txt` y `SHA256SUMS-linux.txt`. En Linux:
+La versión 0.0.29 incluye `SHA256SUMS-windows.txt` y
+`SHA256SUMS-linux.txt`. En Linux:
 
 ```bash
 sha256sum -c SHA256SUMS-linux.txt
@@ -51,16 +51,35 @@ sha256sum -c SHA256SUMS-linux.txt
 En Windows (PowerShell):
 
 ```powershell
-Get-FileHash .\H-IMAGO-<versión>-Setup.exe -Algorithm SHA256
-Get-AuthenticodeSignature .\H-IMAGO-<versión>-Setup.exe
+Get-FileHash .\H-IMAGO-0.0.29-Setup.exe -Algorithm SHA256
+Get-AuthenticodeSignature .\H-IMAGO-0.0.29-Setup.exe
 ```
 
 Las builds de Linux no llevan firma Authenticode; su integridad se comprueba con
 las sumas y con la atestación de procedencia de GitHub Actions:
 
 ```bash
-gh attestation verify H-IMAGO-<versión>.AppImage --repo mre1302/H-Imago
+gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
 ```
+
+## Novedades de 0.0.29
+
+- **Análisis RSH**: capa opcional de análisis de redes sociales históricas con
+  grado, intermediación, cercanía, vector propio/PageRank, comunidades Leiden,
+  densidad y componentes. Se calcula en local, bajo demanda, y exporta los
+  resultados a CSV. Detalles en [`docs/ANALISIS-RSH.md`](docs/ANALISIS-RSH.md).
+- **Vista de grafo**: filtros de entidades y relaciones, barra de estado,
+  flechas de dirección, agrupación de relaciones paralelas, detalle de vínculos,
+  vecindad a uno o dos saltos, histograma temporal con reproducción, vistas
+  guardadas, tabla accesible y opciones de exportación PNG.
+- **Relaciones**: 183 tipos en 8 categorías, dirección según NRELACIONES y
+  validación de las entidades de origen y destino. La matriz pública está en
+  [`docs/NRELACIONES.md`](docs/NRELACIONES.md).
+- **Datos y estabilidad**: migraciones V9 y V10, sugerencias de bloques y mejoras
+  de importación de cuadernos y proyectos.
+- **Documentación y firma**: se publican la arquitectura, la metodología del
+  Análisis RSH, la matriz de relaciones y la configuración de referencia de
+  SignPath en [`.signpath/README.md`](.signpath/README.md).
 
 ## Capturas
 
@@ -626,11 +645,12 @@ las pruebas y el flujo de trabajo.
 
 Si usas H-IMAGO en una investigación, cita el proyecto así:
 
-Ramírez-Espíndola, M. A. (2026). H-IMAGO (Versión 0.0.28) [Programa informático]. Zenodo. https://doi.org/10.5281/zenodo.24475875
+Ramírez-Espíndola, M. A. (2026). H-IMAGO (Versión 0.0.29) [Programa informático]. Zenodo. https://doi.org/10.5281/zenodo.24475874
 
 También puedes usar el botón **Cite this repository** de GitHub o consultar
 [`CITATION.cff`](CITATION.cff). El DOI del concepto, que agrupa todas las
-versiones, es `10.5281/zenodo.24475874`.
+versiones y resuelve a la última, es `10.5281/zenodo.24475874`. El DOI específico
+de la versión 0.0.29 se publica con la release en Zenodo.
 
 ## Apoyar el proyecto
 

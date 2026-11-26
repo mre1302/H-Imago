@@ -45,8 +45,7 @@ repositorio.
 4. Generar el token de API y guardarlo como secreto.
 5. Guardar los identificadores como variables.
 6. Ejecutar el workflow manualmente para probar la firma.
-7. Preparar la próxima versión pública, crear el tag y aprobar las dos
-   solicitudes.
+7. Preparar la versión 0.0.29, crear el tag y aprobar las dos solicitudes.
 
 ## Referencias
 
