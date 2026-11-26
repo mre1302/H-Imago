@@ -4,14 +4,25 @@ const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, Menu, session }
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { Worker } = require('worker_threads');
 const { fileURLToPath } = require('url');
 const db = require('./db/database');
-const { dentroDe, rutaPermitida } = require('./lib/rutas');
+const { dentroDe, rutaPermitida, resolverRutaReal } = require('./lib/rutas');
 const { normalizarTipoRelacion } = require('./db/definiciones');
+const {
+  METRICAS_ANALISIS,
+  MAX_NODOS_ANALISIS,
+  MAX_ARISTAS_ANALISIS,
+  MAX_TEXTO_ETIQUETA,
+} = require('./lib/analisis-rsh/constantes');
 const { restriccionRelacion, relacionPermitida } = require('./src/js/modulos/taxonomia-relaciones');
+const { inspeccionarSQLite } = require('./db/sqlite');
+const { recolectarSugerenciasBloques } = require('./lib/sugerencias-bloques');
 
 let ventana = null;
 let configCache = null;
+const analisisEjecuciones = new Map();
+let analisisSecuencia = 0;
 
 /* ------------------------------------------------------------------ */
 /* Configuración persistente (SQLite local o MySQL/MariaDB de equipo)  */
@@ -186,7 +197,39 @@ function nombreArchivoSeguro(nombre) {
     .slice(0, 120) || 'proyecto';
 }
 
+function destinoExportacionExplicito(datos) {
+  if (!datos || !datos.destino) return null;
+  if (app.isPackaged || process.env.HIMAGO_AUTOTEST !== '1') {
+    throw new Error('Las exportaciones solo pueden guardarse eligiendo un destino en el diálogo del sistema.');
+  }
+  const destino = String(datos.destino);
+  if (!rutaPermitida(destino, [app.getPath('temp')])) {
+    throw new Error('La ruta de exportación de pruebas no está permitida.');
+  }
+  return destino;
+}
+
+function validarDestinoEscritura(destino) {
+  if (!destino) return;
+  const real = resolverRutaReal(destino);
+  const basesApp = [
+    app.getAppPath(),
+    process.resourcesPath,
+    path.dirname(app.getPath('exe')),
+  ].filter(Boolean);
+  for (const base of basesApp) {
+    try {
+      if (dentroDe(real, resolverRutaReal(base))) {
+        throw new Error('No se puede escribir dentro de la carpeta de la aplicación.');
+      }
+    } catch (err) {
+      if (err && /carpeta de la aplicación/i.test(err.message)) throw err;
+    }
+  }
+}
+
 async function escribirArchivoPrivado(destino, contenido) {
+  validarDestinoEscritura(destino);
   const temporal = `${destino}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
     await fs.promises.writeFile(temporal, contenido, { encoding: 'utf8', mode: 0o600 });
@@ -202,6 +245,163 @@ async function escribirArchivoPrivado(destino, contenido) {
     try { await fs.promises.rm(temporal, { force: true }); } catch { /* ya renombrado */ }
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Análisis RSH: cálculo aislado en un worker_threads                  */
+/* ------------------------------------------------------------------ */
+
+function rutaWorkerAnalisisRSH() {
+  const relativa = path.join('db', 'analisis-rsh-worker.js');
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'app.asar.unpacked', relativa);
+  }
+  return path.join(__dirname, relativa);
+}
+
+function textoAnalisis(valor, maximo = MAX_TEXTO_ETIQUETA) {
+  return String(valor == null ? '' : valor).slice(0, maximo);
+}
+
+function numeroAnalisis(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+function validarPayloadAnalisisRSH(payload) {
+  if (!objetoValido(payload)) throw new Error('Datos de análisis no válidos.');
+  const nodos = Array.isArray(payload.nodos) ? payload.nodos : [];
+  const aristas = Array.isArray(payload.aristas) ? payload.aristas : [];
+  if (nodos.length > MAX_NODOS_ANALISIS) {
+    throw new Error(`La red es demasiado grande (máximo ${MAX_NODOS_ANALISIS} entidades).`);
+  }
+  if (aristas.length > MAX_ARISTAS_ANALISIS) {
+    throw new Error(`La red es demasiado grande (máximo ${MAX_ARISTAS_ANALISIS} relaciones).`);
+  }
+  const metricas = Array.isArray(payload.metricas)
+    ? [...new Set(payload.metricas.filter((m) => METRICAS_ANALISIS.includes(m)))]
+    : [];
+  if (!metricas.length) throw new Error('Selecciona al menos una métrica de Análisis RSH.');
+  const opciones = objetoValido(payload.opciones) ? payload.opciones : {};
+  const solicitudId = textoAnalisis(payload.solicitudId, 100)
+    || `ars-${Date.now()}-${++analisisSecuencia}`;
+
+  const limpio = {
+    solicitudId,
+    metricas,
+    nodos: nodos.map((nodo) => ({
+      id: textoAnalisis(nodo && nodo.id, 200),
+      tipo: textoAnalisis(nodo && nodo.tipo, 40),
+      entidadId: numeroAnalisis(nodo && nodo.entidadId),
+      etiqueta: textoAnalisis(nodo && nodo.etiqueta),
+      identificador: textoAnalisis(nodo && nodo.identificador, 40),
+      nombre: textoAnalisis(nodo && nodo.nombre, 200),
+      apellidos: textoAnalisis(nodo && nodo.apellidos, 200),
+      genero: textoAnalisis(nodo && nodo.genero, 80),
+      tipoEntidad: textoAnalisis(nodo && nodo.tipoEntidad, 120),
+      notas: textoAnalisis(nodo && nodo.notas, 500),
+    })),
+    aristas: aristas.map((arista) => ({
+      id: arista && arista.id,
+      origen: textoAnalisis(arista && arista.origen, 200),
+      destino: textoAnalisis(arista && arista.destino, 200),
+      tipo: textoAnalisis(arista && arista.tipo, 200),
+      categoria: textoAnalisis(arista && arista.categoria, 120),
+      procedencia: textoAnalisis(arista && arista.procedencia, 40),
+      anioDesde: numeroAnalisis(arista && arista.anioDesde),
+      anioHasta: numeroAnalisis(arista && arista.anioHasta),
+      fecha: textoAnalisis(arista && arista.fecha, 300),
+    })),
+    opciones: {
+      dirigida: opciones.dirigida !== false,
+      incluirAislados: opciones.incluirAislados !== false,
+      procedencia: ['todas', 'manuales', 'editadas', 'automatizadas'].includes(opciones.procedencia)
+        ? opciones.procedencia
+        : 'todas',
+      resolucion: Number.isFinite(Number(opciones.resolucion)) ? Number(opciones.resolucion) : undefined,
+      semilla: Number.isFinite(Number(opciones.semilla)) ? Math.trunc(Number(opciones.semilla)) : undefined,
+      repeticiones: Number.isFinite(Number(opciones.repeticiones)) ? Number(opciones.repeticiones) : undefined,
+    },
+  };
+  if (Buffer.byteLength(JSON.stringify(limpio), 'utf8') > 64 * 1024 * 1024) {
+    throw new Error('La red es demasiado grande para el Análisis RSH (máximo 64 MB de datos).');
+  }
+  return limpio;
+}
+
+function ejecutarAnalisisRSH(payload, evento) {
+  const solicitudId = payload.solicitudId;
+  if (analisisEjecuciones.has(solicitudId)) {
+    throw new Error('Ya hay un Análisis RSH en curso con ese identificador.');
+  }
+  if (analisisEjecuciones.size >= 4) {
+    throw new Error('Hay demasiados cálculos de Análisis RSH en curso. Espera o cancela uno.');
+  }
+  return new Promise((resolver, rechazar) => {
+    let worker;
+    try {
+      worker = new Worker(rutaWorkerAnalisisRSH(), {
+        resourceLimits: { maxOldGenerationSizeMb: 1024 },
+      });
+    } catch (err) {
+      rechazar(err);
+      return;
+    }
+    const ejecucion = {
+      worker,
+      rechazar,
+      terminada: false,
+      solicitudId,
+      temporizador: null,
+    };
+    const finalizar = (accion, valor) => {
+      if (ejecucion.terminada) return;
+      ejecucion.terminada = true;
+      if (ejecucion.temporizador) clearTimeout(ejecucion.temporizador);
+      analisisEjecuciones.delete(solicitudId);
+      try { worker.terminate(); } catch { /* ya terminado */ }
+      accion(valor);
+    };
+    ejecucion.temporizador = setTimeout(() => {
+      finalizar(rechazar, new Error('El Análisis RSH superó el tiempo máximo de cálculo.'));
+    }, 5 * 60 * 1000);
+    analisisEjecuciones.set(solicitudId, ejecucion);
+    worker.on('message', (mensaje) => {
+      if (!mensaje || mensaje.solicitudId !== solicitudId) return;
+      if (mensaje.tipo === 'progreso') {
+        if (evento && evento.sender && !evento.sender.isDestroyed()) {
+          evento.sender.send('analisis:progreso', {
+            solicitudId,
+            metrica: mensaje.metrica,
+            hechas: mensaje.hechas,
+            total: mensaje.total,
+            aproximada: Boolean(mensaje.aproximada),
+          });
+        }
+        return;
+      }
+      if (mensaje.tipo === 'resultado') {
+        finalizar(resolver, mensaje.resultado);
+        return;
+      }
+      if (mensaje.tipo === 'error') {
+        finalizar(rechazar, new Error(mensaje.error || 'No se pudo calcular el Análisis RSH.'));
+      }
+    });
+    worker.on('error', (err) => finalizar(rechazar, err));
+    worker.on('exit', (codigo) => {
+      if (!ejecucion.terminada) {
+        finalizar(rechazar, new Error(`El cálculo del Análisis RSH terminó inesperadamente (código ${codigo}).`));
+      }
+    });
+    try {
+      worker.postMessage(payload);
+    } catch (err) {
+      finalizar(rechazar, err);
+    }
+  });
+}
+
 
 const TIPOS_ENTIDAD = ['persona', 'institucion', 'lugar', 'patrimonio', 'fuente'];
 
@@ -261,6 +461,36 @@ function validarRutaSqliteSegura(ruta) {
       'La base SQLite debe estar en la carpeta de datos de H-IMAGO, Documentos, Escritorio, Descargas o una carpeta temporal.'
     );
   }
+  validarDestinoEscritura(destino);
+  const userData = path.resolve(app.getPath('userData'));
+  const extension = /\.(db|sqlite|sqlite3)$/i.test(path.basename(destino));
+  if (dentroDe(destino, userData)) {
+    const relativa = path.relative(userData, destino);
+    const partes = relativa.split(path.sep).filter(Boolean);
+    const enRaizPropia = partes.length === 1
+      && /^himago(?:-[A-Za-z0-9_-]+)?\.db$/i.test(partes[0]);
+    const enCarpetaPropia = partes.length >= 2
+      && partes[0].toLowerCase() === 'databases'
+      && extension;
+    if (!enRaizPropia && !enCarpetaPropia) {
+      throw new Error(
+        'Dentro de la carpeta de datos de H-IMAGO solo se permite himago.db o archivos .db en databases/.'
+      );
+    }
+  } else if (!extension) {
+    const info = inspeccionarSQLite(destino);
+    if (!info.existe || !info.himago) {
+      throw new Error('El archivo SQLite debe tener extensión .db, .sqlite o .sqlite3.');
+    }
+  }
+  const info = inspeccionarSQLite(destino);
+  let vacia = false;
+  try { vacia = info.existe && fs.statSync(destino).size === 0; } catch { /* sin acceso */ }
+  if (info.existe && !info.himago && !vacia) {
+    throw new Error(
+      'El archivo existe pero no parece una base de datos de H-IMAGO. Elige otro archivo o crea una base nueva.'
+    );
+  }
 }
 
 const TAMANO_MAXIMO_IMPORTACION = 50 * 1024 * 1024;
@@ -306,6 +536,21 @@ function gestionar(canal, fn) {
     }
     try {
       return { ok: true, datos: await fn(...args) };
+    } catch (err) {
+      console.error(`[${canal}]`, err);
+      return { ok: false, error: traducirError(err) };
+    }
+  });
+}
+
+function gestionarConEvento(canal, fn) {
+  ipcMain.handle(canal, async (evento, ...args) => {
+    if (!remitentePermitido(evento)) {
+      console.error(`[${canal}] remitente IPC no autorizado`);
+      return { ok: false, error: 'Origen no autorizado.' };
+    }
+    try {
+      return { ok: true, datos: await fn(evento, ...args) };
     } catch (err) {
       console.error(`[${canal}]`, err);
       return { ok: false, error: traducirError(err) };
@@ -363,6 +608,41 @@ function configPublica(cfg) {
   return { ...resto, passwordConfigurada: Boolean(password) };
 }
 
+/* La contraseña guardada solo puede reutilizarse contra exactamente la misma
+   conexión. Sin esta comprobación, cualquier código del renderer podría
+   descifrarla y enviarla a un host distinto con mantenerPassword: true. */
+function mismaConexionMySQL(propuesta, guardada) {
+  try {
+    const a = normalizarConfig(propuesta);
+    const b = normalizarConfig(guardada);
+    if (a.motor !== 'mysql' || b.motor !== 'mysql') return false;
+    return Number(a.port || 3306) === Number(b.port || 3306)
+      && String(a.host || '') === String(b.host || '')
+      && String(a.user || '') === String(b.user || '')
+      && String(a.database || '') === String(b.database || '')
+      && Boolean(a.ssl) === Boolean(b.ssl)
+      && Boolean(a.sslVerificar) === Boolean(b.sslVerificar)
+      && String(a.sslCa || '') === String(b.sslCa || '');
+  } catch {
+    return false;
+  }
+}
+
+function exigirMismaConexionParaPassword(cfg) {
+  if (!cfg || !cfg.mantenerPassword) return;
+  if (cfg.motor === 'sqlite') return;
+  const actual = leerConfig();
+  if (actual.motor !== 'mysql') {
+    throw new Error('No hay una contraseña MySQL guardada que reutilizar.');
+  }
+  if (!mismaConexionMySQL(cfg, actual)) {
+    throw new Error(
+      'La contraseña guardada solo puede reutilizarse con la misma conexión. '
+      + 'Introduce de nuevo la contraseña al cambiar host, puerto, usuario, base de datos o TLS.'
+    );
+  }
+}
+
 function registrarIPC() {
   ipcMain.on('app:salir', (evento) => {
     if (remitentePermitido(evento)) app.quit();
@@ -376,6 +656,7 @@ function registrarIPC() {
 
   gestionar('config:guardar', (cfg) => {
     if (!objetoValido(cfg)) throw new Error('Configuración no válida.');
+    exigirMismaConexionParaPassword(cfg);
     let datos = cfg;
     if (cfg.mantenerPassword && (!cfg.motor || cfg.motor === 'mysql')) {
       const actual = leerConfig();
@@ -387,6 +668,7 @@ function registrarIPC() {
 
   gestionar('db:conectar', async (cfg) => {
     if (cfg != null && !objetoValido(cfg)) throw new Error('Configuración no válida.');
+    exigirMismaConexionParaPassword(cfg);
     if (cfg && cfg.mantenerPassword) {
       const actual = leerConfig();
       cfg = { ...cfg, password: actual.password || '' };
@@ -394,7 +676,7 @@ function registrarIPC() {
     if (cfg) delete cfg.mantenerPassword;
     const final = cfg ? normalizarConfig(cfg) : leerConfig();
     if (!final) throw new Error('No hay configuración de base de datos guardada. Abre Configuración.');
-    if (cfg && final.motor === 'sqlite') validarRutaSqliteSegura(final.ruta);
+    if (final.motor === 'sqlite') validarRutaSqliteSegura(final.ruta);
     await db.conectar(final);
     return {
       database: final.database || db.config?.database,
@@ -406,6 +688,7 @@ function registrarIPC() {
 
   gestionar('db:probar', async (cfg) => {
     if (cfg != null && !objetoValido(cfg)) throw new Error('Configuración no válida.');
+    exigirMismaConexionParaPassword(cfg);
     if (cfg && cfg.mantenerPassword) {
       const actual = leerConfig();
       cfg = { ...cfg, password: actual.password || '' };
@@ -415,7 +698,7 @@ function registrarIPC() {
     if (datos.motor !== 'mysql' && !datos.ruta) datos.ruta = rutaSqlitePorDefecto();
     if (datos.motor === 'mysql' && !datos.database) datos.database = 'himago';
     datos = normalizarConfig(datos);
-    if (cfg && datos.motor === 'sqlite') validarRutaSqliteSegura(datos.ruta);
+    if (datos.motor === 'sqlite') validarRutaSqliteSegura(datos.ruta);
     return db.probar(datos);
   });
 
@@ -615,7 +898,13 @@ function registrarIPC() {
     if (!idValido(fuenteId)) throw new Error('Identificador no válido.');
     if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
     await db.verificarFuenteProyecto(fuenteId, proyectoId);
-    return db.listarCuadernos(fuenteId);
+    return db.listarCuadernosResumen(fuenteId);
+  });
+  gestionar('cuaderno:obtener', async (id, proyectoId) => {
+    if (!idValido(id)) throw new Error('Identificador no válido.');
+    if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
+    await db.verificarCuadernoProyecto(id, proyectoId);
+    return db.obtenerCuaderno(id);
   });
   gestionar('cuaderno:crear', async (fuenteId, proyectoId) => {
     if (!idValido(fuenteId)) throw new Error('Identificador no válido.');
@@ -641,7 +930,19 @@ function registrarIPC() {
     if (!idValido(fuenteId)) throw new Error('Identificador no válido.');
     if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
     await db.verificarFuenteProyecto(fuenteId, proyectoId);
-    return db.listarBloquesRegistro(fuenteId);
+    return db.listarBloquesResumen(fuenteId);
+  });
+  gestionar('bloque:obtener', async (id, proyectoId) => {
+    if (!idValido(id)) throw new Error('Identificador no válido.');
+    if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
+    await db.verificarBloqueProyecto(id, proyectoId);
+    return db.obtenerBloqueRegistro(id);
+  });
+  gestionar('bloque:sugerencias', async (fuenteId, proyectoId) => {
+    if (!idValido(fuenteId)) throw new Error('Identificador no válido.');
+    if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
+    await db.verificarFuenteProyecto(fuenteId, proyectoId);
+    return recolectarSugerenciasBloques(await db.listarDatosBloques(fuenteId));
   });
   gestionar('bloque:crear', async (fuenteId, datos, proyectoId) => {
     if (!idValido(fuenteId)) throw new Error('Identificador no válido.');
@@ -736,6 +1037,83 @@ function registrarIPC() {
   gestionar('grafo:datos', async (proyectoId) => {
     if (!idValido(proyectoId)) throw new Error('Identificador de proyecto no válido.');
     return db.datosGrafo(proyectoId);
+  });
+
+  /* Análisis RSH: opcional, bajo demanda y aislado en un worker. */
+  gestionarConEvento('analisis:calcular', async (evento, payload) => {
+    const limpio = validarPayloadAnalisisRSH(payload);
+    return ejecutarAnalisisRSH(limpio, evento);
+  });
+
+  gestionar('analisis:cancelar', async (solicitudId) => {
+    const id = String(solicitudId || '');
+    const ejecucion = analisisEjecuciones.get(id);
+    if (!ejecucion) return false;
+    ejecucion.terminada = true;
+    if (ejecucion.temporizador) clearTimeout(ejecucion.temporizador);
+    analisisEjecuciones.delete(id);
+    try { await ejecucion.worker.terminate(); } catch { /* ya terminado */ }
+    ejecucion.rechazar(new Error('Cálculo del Análisis RSH cancelado.'));
+    return true;
+  });
+
+  gestionar('analisis:exportar', async (datos) => {
+    if (!objetoValido(datos)) throw new Error('Datos de exportación no válidos.');
+    const contenido = String(datos.contenido || '');
+    if (!contenido.trim()) throw new Error('El Análisis RSH no contiene datos para exportar.');
+    if (Buffer.byteLength(contenido, 'utf8') > 25 * 1024 * 1024) {
+      throw new Error('El Análisis RSH es demasiado grande para exportarlo (máximo 25 MB).');
+    }
+    let nombre = nombreArchivoSeguro(datos.nombre || 'analisis-rsh');
+    if (!/\.csv$/i.test(nombre)) nombre = `${nombre}.csv`;
+    let destino = destinoExportacionExplicito(datos);
+    if (!destino) {
+      const opciones = {
+        title: 'Exportar Análisis RSH',
+        defaultPath: nombre,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      };
+      const res = ventana
+        ? await dialog.showSaveDialog(ventana, opciones)
+        : await dialog.showSaveDialog(opciones);
+      if (res.canceled || !res.filePath) return { cancelado: true };
+      destino = res.filePath;
+    }
+    await escribirArchivoPrivado(destino, contenido);
+    return { cancelado: false, ruta: destino };
+  });
+
+  gestionar('grafo:exportar', async (datos) => {
+    if (!objetoValido(datos)) throw new Error('Datos de exportación no válidos.');
+    const contenido = String(datos.contenido || '');
+    if (!contenido.trim()) throw new Error('La tabla del grafo no contiene datos para exportar.');
+    if (Buffer.byteLength(contenido, 'utf8') > 25 * 1024 * 1024) {
+      throw new Error('La tabla del grafo es demasiado grande para exportarla (máximo 25 MB).');
+    }
+    const tipo = String(datos.tipo || 'csv').toLowerCase();
+    if (tipo !== 'csv' && tipo !== 'xls') {
+      throw new Error('El formato de exportación de la tabla no es válido.');
+    }
+    const extension = tipo === 'xls' ? 'xls' : 'csv';
+    let nombre = nombreArchivoSeguro(datos.nombre || 'grafo-tabla');
+    if (!new RegExp(`\\.${extension}$`, 'i').test(nombre)) nombre = `${nombre}.${extension}`;
+    let destino = destinoExportacionExplicito(datos);
+    if (!destino) {
+      const opciones = {
+        title: tipo === 'xls' ? 'Exportar hoja de cálculo' : 'Exportar tabla CSV',
+        defaultPath: nombre,
+        filters: [tipo === 'xls'
+          ? { name: 'Hoja de cálculo de Excel', extensions: ['xls'] }
+          : { name: 'CSV', extensions: ['csv'] }],
+      };
+      const res = ventana
+        ? await dialog.showSaveDialog(ventana, opciones)
+        : await dialog.showSaveDialog(opciones);
+      if (res.canceled || !res.filePath) return { cancelado: true };
+      destino = res.filePath;
+    }
+    await escribirArchivoPrivado(destino, contenido);
+    return { cancelado: false, ruta: destino };
   });
 }
 
@@ -905,8 +1283,9 @@ function crearVentana() {
 
   /* Diagnóstico: los errores del renderer quedan en la consola del proceso
      principal (útiles cuando no hay DevTools abiertas). */
-  ventana.webContents.on('console-message', (_evento, nivel, mensaje, linea, fuente) => {
-    if (nivel >= 2) console.error(`[renderer] ${mensaje} (${fuente}:${linea})`);
+  ventana.webContents.on('console-message', (_evento, details) => {
+    if (!details || (details.level !== 'error' && details.level !== 'warning')) return;
+    console.error(`[renderer] ${details.message} (${details.sourceId}:${details.lineNumber})`);
   });
   ventana.webContents.on('render-process-gone', (_evento, detalles) => {
     console.error('[renderer] proceso terminado:', JSON.stringify(detalles));
@@ -961,6 +1340,11 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  for (const ejecucion of analisisEjecuciones.values()) {
+    ejecucion.terminada = true;
+    try { ejecucion.worker.terminate(); } catch { /* ya terminado */ }
+  }
+  analisisEjecuciones.clear();
   try { db.pool?.end(); } catch { /* cierre best-effort */ }
 });
 

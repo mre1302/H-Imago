@@ -16,13 +16,9 @@ const { recolectarReferenciasBloque } = require('./bloques-referencias');
 const relacionesAutomaticas = require('./relaciones-automaticas');
 const { renombrarTiposRelacion } = require('./migracion-relaciones');
 
-const ESQUEMA_VERSION = 9;
-
-function copiarSiExiste(origen, destino) {
-  try {
-    if (fs.existsSync(origen)) fs.copyFileSync(origen, destino);
-  } catch { /* sin copia */ }
-}
+const ESQUEMA_VERSION = 10;
+const TIEMPO_MAXIMO_OPERACION = 120000;
+const TIEMPO_MAXIMO_RESPALDO = 600000;
 
 function fechaSello() {
   return new Date().toISOString().replace(/[:.]/g, '-');
@@ -62,6 +58,7 @@ class PoolSQLite {
         return;
       }
       this.pendientes.delete(mensaje.id);
+      if (pendiente.temporizador) clearTimeout(pendiente.temporizador);
       if (mensaje.ok) pendiente.resolver(mensaje.datos);
       else {
         const error = new Error(mensaje.error?.message || 'Error de SQLite.');
@@ -71,7 +68,10 @@ class PoolSQLite {
     });
     this.worker.on('error', (err) => {
       if (this.rechazarReady) this.rechazarReady(err);
-      for (const pendiente of this.pendientes.values()) pendiente.rechazar(err);
+      for (const pendiente of this.pendientes.values()) {
+        if (pendiente.temporizador) clearTimeout(pendiente.temporizador);
+        pendiente.rechazar(err);
+      }
       this.pendientes.clear();
     });
     this.worker.on('exit', (codigo) => {
@@ -79,7 +79,10 @@ class PoolSQLite {
       this.cerrado = true;
       const error = new Error(`El proceso SQLite terminó inesperadamente (código ${codigo}).`);
       if (this.rechazarReady) this.rechazarReady(error);
-      for (const pendiente of this.pendientes.values()) pendiente.rechazar(error);
+      for (const pendiente of this.pendientes.values()) {
+        if (pendiente.temporizador) clearTimeout(pendiente.temporizador);
+        pendiente.rechazar(error);
+      }
       this.pendientes.clear();
     });
   }
@@ -94,9 +97,35 @@ class PoolSQLite {
     await this.ready;
     if (this.cerrado) throw new Error('La base SQLite está cerrada.');
     const id = this.siguienteId++;
+    const limite = (tipo === 'respaldo' || tipo === 'checkpoint')
+      ? TIEMPO_MAXIMO_RESPALDO
+      : TIEMPO_MAXIMO_OPERACION;
     return new Promise((resolver, rechazar) => {
-      this.pendientes.set(id, { resolver, rechazar });
-      this.worker.postMessage({ id, tipo, ...datos });
+      const temporizador = setTimeout(() => {
+        if (!this.pendientes.has(id)) return;
+        this.pendientes.delete(id);
+        rechazar(new Error(`La operación SQLite «${tipo}» no respondió a tiempo.`));
+      }, limite);
+      const resolverConLimpieza = (valor) => {
+        clearTimeout(temporizador);
+        resolver(valor);
+      };
+      const rechazarConLimpieza = (error) => {
+        clearTimeout(temporizador);
+        rechazar(error);
+      };
+      this.pendientes.set(id, {
+        resolver: resolverConLimpieza,
+        rechazar: rechazarConLimpieza,
+        temporizador,
+      });
+      try {
+        this.worker.postMessage({ id, tipo, ...datos });
+      } catch (err) {
+        clearTimeout(temporizador);
+        this.pendientes.delete(id);
+        rechazar(err);
+      }
     });
   }
 
@@ -143,6 +172,14 @@ class PoolSQLite {
     return this.enCola(() => this.enviar('checkpoint'));
   }
 
+  /** Copia consistente mediante VACUUM INTO. No depende de copiar a mano
+      db/wal/shm en tres pasos ni de que el checkpoint trunque el WAL. */
+  async respaldo(destino) {
+    await this.ready;
+    if (this.cerrado) throw new Error('La base SQLite está cerrada.');
+    return this.enCola(() => this.enviar('respaldo', { destino: String(destino) }));
+  }
+
   async end() {
     if (this.cerrado) return;
     await this.cola.catch(() => undefined);
@@ -152,11 +189,37 @@ class PoolSQLite {
   }
 }
 
+function inspeccionarSQLite(ruta) {
+  const destino = path.resolve(String(ruta || ''));
+  if (!fs.existsSync(destino)) return { existe: false, himago: true };
+  let db = null;
+  try {
+    db = new Database(destino, { fileMustExist: true, readOnly: true });
+    const tablas = db.all(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('proyectos', 'schema_migrations')"
+    ).map((fila) => fila.name);
+    const version = db.get('PRAGMA user_version');
+    return {
+      existe: true,
+      himago: tablas.includes('proyectos') || tablas.includes('schema_migrations'),
+      version: Number(version?.user_version || 0),
+    };
+  } catch {
+    return { existe: true, himago: false };
+  } finally {
+    try { if (db) db.close(); } catch { /* ya cerrada */ }
+  }
+}
+
 async function probarSQLite(ruta) {
   const destino = prepararRuta(ruta);
+  const existia = fs.existsSync(destino);
   const db = new Database(destino);
-  try { fs.chmodSync(destino, 0o600); } catch { /* Windows */ }
+  if (!existia) {
+    try { fs.chmodSync(destino, 0o600); } catch { /* Windows */ }
+  }
   try {
+    try { db.exec('PRAGMA busy_timeout = 5000'); } catch { /* versión antigua */ }
     const fila = db.get('SELECT sqlite_version() AS version');
     return { version: `SQLite ${fila.version}`, database: 'SQLite', ruta: destino };
   } finally {
@@ -645,13 +708,13 @@ async function migrarV8(pool) {
 }
 
 async function migrarV9(pool) {
-  await pool.query('DELETE FROM bloque_referencias');
   const [bloques] = await pool.query('SELECT id, tipo, datos FROM bloques_registro');
   for (const bloque of bloques) {
     let datos;
     try {
       datos = bloque.datos ? JSON.parse(bloque.datos) : {};
     } catch {
+      /* Conservar las referencias anteriores si el JSON está corrupto. */
       continue;
     }
     if (!datos || typeof datos !== 'object' || Array.isArray(datos)) continue;
@@ -663,6 +726,7 @@ async function migrarV9(pool) {
     } catch {
       continue;
     }
+    await pool.query('DELETE FROM bloque_referencias WHERE bloque_id = ?', [bloque.id]);
     for (const [tipo, conjunto] of Object.entries(ids)) {
       for (const id of conjunto) {
         const numero = Number(id);
@@ -673,6 +737,72 @@ async function migrarV9(pool) {
         );
       }
     }
+  }
+}
+
+async function migrarV10(pool) {
+  /* Limpieza de datos que versiones anteriores pudieron dejar: relaciones
+     reflexivas y bloque_id de EDITADA apuntando a un bloque eliminado. */
+  await pool.query(
+    `DELETE FROM relaciones
+     WHERE origen_tipo = destino_tipo AND origen_id = destino_id
+       AND (procedencia = 'AUTOMATIZADA' OR bloque_id IS NOT NULL)`
+  );
+  await pool.query(
+    `UPDATE relaciones SET bloque_id = NULL
+     WHERE procedencia = 'EDITADA' AND bloque_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM bloques_registro b WHERE b.id = relaciones.bloque_id)`
+  );
+
+  /* Coincidencias: normalizar el par y eliminar duplicados antes de crear
+     la restricción única. */
+  await pool.query(
+    `UPDATE coincidencias
+     SET entidad_a = MIN(entidad_a, entidad_b),
+         entidad_b = MAX(entidad_a, entidad_b)
+     WHERE entidad_a > entidad_b`
+  );
+  await pool.query(
+    `DELETE FROM coincidencias
+     WHERE id NOT IN (
+       SELECT MIN(id) FROM coincidencias
+       GROUP BY proyecto_id, tipo, entidad_a, entidad_b
+     )`
+  );
+  try {
+    await pool.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS uq_coincidencia_par ON coincidencias(proyecto_id, tipo, entidad_a, entidad_b)'
+    );
+  } catch (err) {
+    console.warn('[sqlite] No se pudo crear uq_coincidencia_par:', err.message);
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_coincidencia_par ON coincidencias(proyecto_id, tipo, entidad_a, entidad_b)'
+    );
+  }
+
+  /* Posiciones de cuadernos: renumerar por fuente antes del índice único. */
+  const [cuadernos] = await pool.query(
+    'SELECT id, fuente_id FROM cuadernos ORDER BY fuente_id, posicion, id'
+  );
+  let fuente = null;
+  let posicion = 0;
+  for (const cuaderno of cuadernos) {
+    if (String(cuaderno.fuente_id) !== String(fuente)) {
+      fuente = cuaderno.fuente_id;
+      posicion = 0;
+    }
+    posicion++;
+    await pool.query('UPDATE cuadernos SET posicion = ? WHERE id = ?', [posicion, cuaderno.id]);
+  }
+  try {
+    await pool.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS uq_cuaderno_posicion ON cuadernos(fuente_id, posicion)'
+    );
+  } catch (err) {
+    console.warn('[sqlite] No se pudo crear uq_cuaderno_posicion:', err.message);
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_cuaderno_posicion ON cuadernos(fuente_id, posicion)'
+    );
   }
 }
 
@@ -746,12 +876,20 @@ async function deduplicarExclusiones(pool) {
 async function copiarBaseParaMigracion(pool) {
   if (!fs.existsSync(pool.ruta)) return null;
   const destino = `${pool.ruta}.bak-${fechaSello()}`;
-  try { await pool.checkpoint(); } catch { /* sin WAL */ }
-  copiarSiExiste(pool.ruta, destino);
-  copiarSiExiste(`${pool.ruta}-wal`, `${destino}-wal`);
-  copiarSiExiste(`${pool.ruta}-shm`, `${destino}-shm`);
-  for (const sufijo of ['', '-wal', '-shm']) {
-    try { fs.chmodSync(`${destino}${sufijo}`, 0o600); } catch { /* Windows */ }
+  try {
+    /* VACUUM INTO crea una base autocontenida y consistente incluso con WAL
+       activo. Si falla, la migración debe abortar: continuar sin una copia
+       válida era el peor escenario posible. */
+    await pool.respaldo(destino);
+  } catch (err) {
+    throw new Error(`No se pudo crear la copia de seguridad de SQLite antes de migrar: ${err.message}`);
+  }
+  try {
+    const info = fs.statSync(destino);
+    if (!info.isFile() || info.size === 0) throw new Error('archivo vacío');
+    fs.chmodSync(destino, 0o600);
+  } catch (err) {
+    throw new Error(`La copia de seguridad de SQLite no es válida: ${err.message}`);
   }
   limpiarCopiasAntiguas(pool.ruta);
   return destino;
@@ -795,6 +933,7 @@ async function crearEsquemaSQLite(pool) {
     if (version < 7) await migrarV7(ejecutor);
     if (version < 8) await migrarV8(ejecutor);
     if (version < 9) await migrarV9(ejecutor);
+    if (version < 10) await migrarV10(ejecutor);
     await deduplicarUuidsProyectos(ejecutor);
     await deduplicarExclusiones(ejecutor);
     await crearIndices(ejecutor);
@@ -805,4 +944,4 @@ async function crearEsquemaSQLite(pool) {
   if (copia) console.log(`[sqlite] Copia previa a la migración: ${copia}`);
 }
 
-module.exports = { PoolSQLite, probarSQLite, crearEsquemaSQLite, ESQUEMA_VERSION };
+module.exports = { PoolSQLite, probarSQLite, inspeccionarSQLite, crearEsquemaSQLite, ESQUEMA_VERSION };

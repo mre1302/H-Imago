@@ -47,12 +47,15 @@ contextBridge.exposeInMainWorld('api', {
 
   // Cuadernos de transcripción (fuentes)
   cuadernoListar: (fuenteId, proyectoId) => invocar('cuaderno:listar', fuenteId, proyectoId),
+  cuadernoObtener: (id, proyectoId) => invocar('cuaderno:obtener', id, proyectoId),
   cuadernoCrear: (fuenteId, proyectoId) => invocar('cuaderno:crear', fuenteId, proyectoId),
   cuadernoActualizar: (id, datos, proyectoId) => invocar('cuaderno:actualizar', id, datos, proyectoId),
   cuadernoEliminar: (id, proyectoId) => invocar('cuaderno:eliminar', id, proyectoId),
 
   // Bloques de registro (fuentes)
   bloqueListar: (fuenteId, proyectoId) => invocar('bloque:listar', fuenteId, proyectoId),
+  bloqueObtener: (id, proyectoId) => invocar('bloque:obtener', id, proyectoId),
+  bloqueSugerencias: (fuenteId, proyectoId) => invocar('bloque:sugerencias', fuenteId, proyectoId),
   bloqueCrear: (fuenteId, datos, proyectoId) => invocar('bloque:crear', fuenteId, datos, proyectoId),
   bloqueActualizar: (id, datos, proyectoId) => invocar('bloque:actualizar', id, datos, proyectoId),
   bloqueEliminar: (id, proyectoId) => invocar('bloque:eliminar', id, proyectoId),
@@ -61,6 +64,17 @@ contextBridge.exposeInMainWorld('api', {
 
   // Grafo
   grafoDatos: (proyectoId) => invocar('grafo:datos', proyectoId),
+  grafoExportar: (datos) => invocar('grafo:exportar', datos),
+
+  // Análisis RSH (opcional, bajo demanda)
+  analisisCalcular: (payload) => invocar('analisis:calcular', payload),
+  analisisCancelar: (solicitudId) => invocar('analisis:cancelar', solicitudId),
+  analisisExportar: (datos) => invocar('analisis:exportar', datos),
+  onAnalisisProgreso: (callback) => {
+    const escucha = (_evento, datos) => callback(datos);
+    ipcRenderer.on('analisis:progreso', escucha);
+    return () => ipcRenderer.removeListener('analisis:progreso', escucha);
+  },
 
   // Búsqueda general
   busquedaGlobal: (proyectoId, opciones) => invocar('busqueda:global', proyectoId, opciones),

@@ -14,6 +14,7 @@ function contextoFalso() {
     setTransform() {}, clearRect() {}, save() {}, restore() {},
     translate() {}, scale() {}, beginPath() {}, arc() {}, fill() {},
     stroke() {}, moveTo() {}, lineTo() {}, fillText() {}, fillRect() {},
+    quadraticCurveTo() {}, rect() {}, closePath() {}, setLineDash() {},
     createRadialGradient() { return gradiente; },
     measureText(texto) { return { width: String(texto || '').length * 6 }; },
     fillStyle: '', strokeStyle: '', lineWidth: 1, lineCap: '', lineJoin: '',
@@ -81,12 +82,31 @@ test('UI de grafo: búsqueda de entidades, de relaciones y exclusión de entidad
   assert.ok(leyendaEntidades.lastElementChild.classList.contains('grafo-buscar'));
   assert.ok(leyendaRelaciones.lastElementChild.classList.contains('grafo-buscar'));
   const botonesAcciones = [...cont.querySelectorAll('.grafo-acciones button')];
-  assert.deepEqual(botonesAcciones.slice(0, 2).map((b) => b.textContent), ['Temporalidad', 'Reorganizar']);
-  assert.equal(cont.querySelectorAll('.grafo-opcion-relacion').length, 182);
+  assert.deepEqual(botonesAcciones.slice(0, 4).map((b) => b.textContent),
+    ['Entidades', 'Relaciones', 'Temporalidad', 'Reorganizar']);
+  assert.equal(cont.querySelectorAll('.grafo-opcion-relacion').length, 183);
   assert.equal(cont.querySelector('datalist'), null);
 
+  const panelEntidades = cont.querySelector('#grafo-panel-entidades');
+  const barraRelaciones = cont.querySelector('#grafo-panel-relaciones');
+  const btnEntidades = botonesAcciones.find((b) => b.textContent === 'Entidades');
+  const btnRelaciones = botonesAcciones.find((b) => b.textContent === 'Relaciones');
+  assert.equal(panelEntidades.hidden, true);
+  assert.equal(barraRelaciones.hidden, true);
+  btnEntidades.click();
+  assert.equal(panelEntidades.hidden, false);
+  assert.equal(barraRelaciones.hidden, true);
+  assert.equal(btnEntidades.getAttribute('aria-expanded'), 'true');
+  btnRelaciones.click();
+  assert.equal(panelEntidades.hidden, true);
+  assert.equal(barraRelaciones.hidden, false);
+  assert.equal(btnRelaciones.getAttribute('aria-expanded'), 'true');
+  btnRelaciones.click();
+  assert.equal(barraRelaciones.hidden, true);
+  assert.equal(btnRelaciones.getAttribute('aria-expanded'), 'false');
+
   const panelTemporal = cont.querySelector('.grafo-tiempo');
-  const btnTemporalidad = botonesAcciones[0];
+  const btnTemporalidad = botonesAcciones.find((b) => b.textContent === 'Temporalidad');
   assert.equal(panelTemporal.hidden, true);
   assert.equal(btnTemporalidad.getAttribute('aria-expanded'), 'false');
   btnTemporalidad.click();
@@ -97,6 +117,7 @@ test('UI de grafo: búsqueda de entidades, de relaciones y exclusión de entidad
   assert.equal(panelTemporal.hidden, true);
   assert.equal(btnTemporalidad.getAttribute('aria-expanded'), 'false');
 
+  btnRelaciones.click();
   const panelRelaciones = cont.querySelector('.grafo-lista-relaciones');
   assert.ok(panelRelaciones.hidden);
   buscadorRelacion.dispatchEvent(new window.FocusEvent('focus'));

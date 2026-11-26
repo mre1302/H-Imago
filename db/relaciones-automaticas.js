@@ -1979,6 +1979,11 @@ async function reconciliarBloque(db, bloqueId, ejecutor = db.pool) {
   for (const d of propuestas) {
     if (!existentesPorTipo[d.origen_tipo]?.has(Number(d.origen_id))) continue;
     if (!existentesPorTipo[d.destino_tipo]?.has(Number(d.destino_id))) continue;
+    /* La API manual prohíbe una relación de una entidad consigo misma; las
+       reglas automáticas también deben hacerlo (productos cartesianos de
+       roles pueden acabar con el mismo id a ambos lados). */
+    if (d.origen_tipo === d.destino_tipo
+      && Number(d.origen_id) === Number(d.destino_id)) continue;
     /* Defensa adicional: ninguna regla automática debe crear una pareja que
        la taxonomía actual prohíba (p. ej. una Sede institución → lugar). */
     if (!relacionPermitida(d.tipo, d.origen_tipo, d.destino_tipo)) {
@@ -1996,17 +2001,20 @@ async function reconciliarBloque(db, bloqueId, ejecutor = db.pool) {
     [bloqueId]
   );
   const [editadas] = await ejecutor.query(
-    `SELECT regla, origen_tipo, origen_id, destino_tipo, destino_id, tipo
+    `SELECT regla, origen_tipo, origen_id, destino_tipo, destino_id, tipo, firma
      FROM relaciones WHERE bloque_id = ? AND procedencia = 'EDITADA'`,
     [bloqueId]
   );
+  /* Para suprimir la regla original no debe importar el tipo actual: si el
+     usuario cambió el tipo o los extremos, la relación editada sigue siendo
+     la representación de esa regla y no debe reaparecer otra automática. */
   const claveRelacion = (r) => [
     r.regla || '',
     r.origen_tipo, Number(r.origen_id),
     r.destino_tipo, Number(r.destino_id),
-    r.tipo || '',
   ].join('\u0000');
   const editadasSet = new Set(editadas.map(claveRelacion));
+  const firmasEditadas = new Set(editadas.map((r) => r.firma).filter(Boolean));
   const [exclusiones] = await ejecutor.query(
     'SELECT regla, firma FROM relaciones_exclusiones WHERE bloque_id = ?',
     [bloqueId]
@@ -2014,7 +2022,10 @@ async function reconciliarBloque(db, bloqueId, ejecutor = db.pool) {
   const exclusionesSet = new Set(
     exclusiones.map((e) => `${e.regla || ''}\u0000${e.firma || ''}`)
   );
-  const existeEditadaEnMemoria = (d) => editadasSet.has(claveRelacion(d));
+  const existeEditadaEnMemoria = (d) => (
+    editadasSet.has(claveRelacion(d))
+    || firmasEditadas.has(firmaDescriptor(d))
+  );
   const existeExclusionEnMemoria = (d, firma, firmaAnterior) => (
     exclusionesSet.has(`${d.regla || ''}\u0000${firma || ''}`)
     || exclusionesSet.has(`${d.regla || ''}\u0000${firmaAnterior || ''}`)
@@ -2249,8 +2260,10 @@ async function registrarExclusionPorBorrado(db, relacion, ejecutor = db.pool) {
   if (relacion.procedencia !== 'AUTOMATIZADA' && relacion.procedencia !== 'EDITADA') return;
 
   let fuenteId = null;
-  if (relacion.procedencia === 'AUTOMATIZADA' && relacion.firma) {
-    /* La firma antigua ya identifica la relación; no hace falta reconstuirla. */
+  /* La firma original se conserva al editar (actualizarRelacion no toca
+     firma). Usarla también para EDITADA evita que al borrar la relación
+     editada se reconstruya una firma distinta y la regla la resucite. */
+  if (relacion.firma) {
     const insertar = db.motor === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
     await ejecutor.query(
       `${insertar} INTO relaciones_exclusiones

@@ -4,7 +4,7 @@
 /* H-IMAGO · Diálogo de configuración de la base de datos (compartido)
    Modo personal = SQLite local. Modo equipo = MySQL/MariaDB. */
 
-async function abrirDialogoConfig({ alGuardar } = {}) {
+async function abrirDialogoConfig({ alGuardar, antesDeGuardar } = {}) {
   let cfg = {};
   try { cfg = (await llamar(api.configObtener())) || {}; } catch { /* sin configuración */ }
   if (cfg.avisoConfig) aviso(cfg.avisoConfig, 'error');
@@ -164,12 +164,23 @@ async function abrirDialogoConfig({ alGuardar } = {}) {
       || String(datos.sslCa || '') !== String(cfg.sslCa || '');
   };
 
+  let operacionEnCurso = false;
+  const bloquearBotones = (bloquear) => {
+    btnProbar.disabled = bloquear;
+    btnGuardar.disabled = bloquear;
+    btnCancelar.disabled = bloquear;
+  };
+
   btnProbar.addEventListener('click', async () => {
+    if (operacionEnCurso) return;
+    operacionEnCurso = true;
+    bloquearBotones(true);
     estado.textContent = 'Probando conexión…';
     estado.className = 'config-estado';
     try {
       const datos = reunir();
       const info = await llamar(api.dbProbar(datos));
+      if (!contenido.isConnected) return;
       if (datos.motor === 'sqlite') {
         estado.textContent = `Base local correcta · ${info.version} · ${info.ruta}`;
       } else {
@@ -177,20 +188,37 @@ async function abrirDialogoConfig({ alGuardar } = {}) {
       }
       estado.className = 'config-estado ok';
     } catch (err) {
+      if (!contenido.isConnected) return;
       estado.textContent = err.message;
       estado.className = 'config-estado error';
+    } finally {
+      operacionEnCurso = false;
+      if (contenido.isConnected) bloquearBotones(false);
     }
   });
 
   btnGuardar.addEventListener('click', async () => {
+    if (operacionEnCurso) return;
     const datos = reunir();
     const cambiada = configCambiada(datos);
-    estado.textContent = 'Conectando…';
+    operacionEnCurso = true;
+    bloquearBotones(true);
+    estado.textContent = cambiada ? 'Guardando y conectando…' : 'Conectando…';
     estado.className = 'config-estado';
     try {
+      if (cambiada && typeof antesDeGuardar === 'function') {
+        const permitir = await antesDeGuardar({ datos, cambiada });
+        if (permitir === false) {
+          estado.textContent = 'Cambio de configuración cancelado.';
+          estado.className = 'config-estado';
+          return;
+        }
+      }
+      if (!contenido.isConnected) return;
       const guardada = await llamar(api.configGuardar(datos));
       if (guardada && guardada.avisoConfig) aviso(guardada.avisoConfig, 'error');
       const r = await llamar(api.dbConectar());
+      if (!contenido.isConnected) return;
       if (datos.motor === 'sqlite') {
         aviso('Trabajando en modo personal · base local SQLite', 'exito');
       } else {
@@ -199,8 +227,12 @@ async function abrirDialogoConfig({ alGuardar } = {}) {
       cerrar();
       if (alGuardar) alGuardar({ cambiada, config: datos });
     } catch (err) {
+      if (!contenido.isConnected) return;
       estado.textContent = err.message;
       estado.className = 'config-estado error';
+    } finally {
+      operacionEnCurso = false;
+      if (contenido.isConnected) bloquearBotones(false);
     }
   });
 }

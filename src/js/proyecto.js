@@ -220,9 +220,40 @@ $('#btn-inicio').addEventListener('click', async () => {
 
 $('#btn-config').addEventListener('click', () => {
   abrirDialogoConfig({
+    /* Antes de guardar una configuración distinta, cerrar el trabajo abierto:
+       si hay cambios, se guardan o se cancela el cambio de base de datos. */
+    antesDeGuardar: async ({ cambiada }) => {
+      if (!cambiada) return true;
+      if (!moduloActual || !moduloActual.hayCambios || !moduloActual.hayCambios()) return true;
+      const guardar = await confirmar(
+        'Hay cambios sin guardar. ¿Guardarlos antes de cambiar la configuración de la base de datos?',
+        'Cambios sin guardar'
+      );
+      if (!guardar) return false;
+      if (moduloActual.guardarPendiente) {
+        const ok = await moduloActual.guardarPendiente();
+        if (ok === false) {
+          aviso('No se pudieron guardar todos los cambios. Se cancela el cambio de configuración.', 'error');
+          return false;
+        }
+      }
+      await llamar(api.proyectoGuardar(idProyecto));
+      actualizarIndicadorCambios();
+      if (moduloActual && moduloActual.hayCambios && moduloActual.hayCambios()) {
+        aviso('Quedan cambios sin guardar. Se cancela el cambio de configuración.', 'error');
+        return false;
+      }
+      return true;
+    },
     alGuardar: ({ cambiada } = {}) => {
       if (!cambiada) {
         navegar(seccionActual);
+        return;
+      }
+      /* después de antesDeGuardar no debería quedar nada pendiente; por
+         seguridad, no se destruye el módulo si aún hay cambios. */
+      if (moduloActual && moduloActual.hayCambios && moduloActual.hayCambios()) {
+        aviso('Aún hay cambios sin guardar. Guarda el proyecto antes de cambiar de base de datos.', 'error');
         return;
       }
       salidaConfirmada = true;

@@ -296,3 +296,10 @@ const COLORES_TIPO = {
   lugar: '#86b28a',
   patrimonio: '#b98cc4',
 };
+
+/* Paleta estable para la capa opcional de comunidades del Análisis RSH. */
+const COLORES_COMUNIDADES = [
+  '#e3c35a', '#7ea8c9', '#86b28a', '#b98cc4',
+  '#d98b8b', '#6fc3c0', '#d4a373', '#9d9dd6',
+  '#c7a27a', '#8ab6d6', '#a8c686', '#c6a0d8',
+];

@@ -73,6 +73,13 @@ function procesar(mensaje) {
       responder({ ok: true, datos: true });
       return;
     }
+    if (mensaje.tipo === 'respaldo') {
+      const destino = String(mensaje.destino || '');
+      if (!destino) throw new Error('Falta el destino del respaldo SQLite.');
+      db.run('VACUUM INTO ?', [destino]);
+      responder({ ok: true, datos: true });
+      return;
+    }
     if (mensaje.tipo === 'close') {
       try { db.close(); } catch { /* ya cerrada */ }
       responder({ ok: true, datos: true });

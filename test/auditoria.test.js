@@ -8,6 +8,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { Database } = require('node-sqlite3-wasm');
 const db = require('../db/database');
+const { normalizarTipoRelacion } = require('../db/definiciones');
 
 function rutaTemporal(nombre) {
   return path.join(os.tmpdir(), `himago-test-${process.pid}-${Date.now()}-${nombre}.db`);
@@ -71,6 +72,29 @@ test('Importación fallida no deja un proyecto parcial', async () => {
     };
     await assert.rejects(() => db.importarProyecto(objeto), /título es obligatorio/i);
     assert.deepEqual(await db.listarProyectos(), []);
+  } finally {
+    await limpiar(ruta);
+  }
+});
+
+test('Importación: renumera cuadernos sin chocar con la posición única', async () => {
+  const ruta = rutaTemporal('cuadernos-importados');
+  try {
+    await db.conectar({ motor: 'sqlite', ruta });
+    const proyecto = await db.crearProyecto({ nombre: 'Cuadernos' });
+    const fuente = await db.crearEntidad('fuente', proyecto.id, { titulo: 'Libro' });
+    const primero = await db.crearCuaderno(fuente.id);
+    const segundo = await db.crearCuaderno(fuente.id);
+    await db.actualizarCuaderno(primero.id, { contenido: 'Primero', fojas: [] });
+    await db.actualizarCuaderno(segundo.id, { contenido: 'Segundo', fojas: [] });
+
+    const exportado = await db.exportarProyecto(proyecto.id);
+    assert.deepEqual(exportado.cuadernos.map((c) => Number(c.posicion)), [1, 2]);
+    const importado = await db.importarProyecto(JSON.parse(JSON.stringify(exportado)));
+    const [fuenteImportada] = await db.listarEntidades('fuente', importado.id);
+    const cuadernos = await db.listarCuadernos(fuenteImportada.id);
+    assert.deepEqual(cuadernos.map((c) => c.contenido), ['Primero', 'Segundo']);
+    assert.deepEqual(cuadernos.map((c) => Number(c.posicion)), [1, 2]);
   } finally {
     await limpiar(ruta);
   }
@@ -537,6 +561,12 @@ test('Taxonomía: incluye las nuevas relaciones solicitadas', () => {
   assert.ok(tax.Territorial.includes('Mayordomo/Administrador'));
   assert.ok(tax.Territorial.includes('Adscripción'));
   assert.ok(tax.Territorial.includes('Apresado/retenido'));
+  assert.ok(tax.Territorial.includes('Arrestado'));
+  assert.ok(!tax.Territorial.includes('Recluso'));
+  assert.equal(normalizarTipoRelacion('Recluso'), 'Arrestado');
+  assert.equal(contexto.window.flechaRelacion('Hermanos'), '↔');
+  assert.equal(contexto.window.flechaRelacion('Animadversión'), '↔');
+  assert.equal(contexto.window.flechaRelacion('Miembro'), '→');
   for (const etiqueta of [
     'Fiscal – Acusado', 'Fiscal – Defensor', 'Fiscal – Demandante',
     'Infractor – Damnificado', 'Juez – Absuelto', 'Juez – Acusado',
@@ -551,11 +581,35 @@ test('Taxonomía: incluye las nuevas relaciones solicitadas', () => {
     'Espía – Espiado', 'Homicida – Fallecido', 'Indiferentes',
     'Enemistados', 'No correspondido', 'Sobrestimado',
     'Subestimado', 'Violentador – Violentado',
+    'Traidor – Traicionado',
   ]) {
     assert.ok(tax.Sentimental.includes(etiqueta), `Falta «${etiqueta}» en Sentimental`);
   }
   assert.ok(!tax.Sentimental.includes('Ruptura'));
   assert.ok(!tax.Sentimental.includes('Rechazo'));
+});
+
+test('Inicio: lema y pie actualizados', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
+  assert.match(html, /Prosopografía y visualización de redes sociales históricas/);
+  assert.match(html, /H-IMAGO — Visualización de redes sociales históricas · Electron \+ SQLite\/MySQL/);
+});
+
+test('Taxonomía: listas alfabéticas dentro de cada categoría', () => {
+  const contexto = { window: {}, console: { log() {} } };
+  vm.createContext(contexto);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'src', 'js', 'modulos', 'taxonomia-relaciones.js'), 'utf8'),
+    contexto
+  );
+  const tax = contexto.window.TAXONOMIA_RELACIONES;
+  for (const [categoria, etiquetas] of Object.entries(tax)) {
+    const lista = Array.from(etiquetas);
+    const ordenadas = [...lista].sort(
+      (a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+    assert.deepEqual(lista, ordenadas, `La categoría ${categoria} no está ordenada`);
+  }
 });
 
 test('Taxonomía: recuento de categorías y tipos del mapeo vigente', () => {
@@ -575,12 +629,12 @@ test('Taxonomía: recuento de categorías y tipos del mapeo vigente', () => {
       Familiar: 32,
       Institucional: 33,
       Legal: 23,
-      Sentimental: 32,
+      Sentimental: 33,
       Territorial: 25,
     }
   );
-  assert.equal(Object.values(tax).flat().length, 182);
-  assert.equal(contexto.window.RELACIONES_TIPOS.length, 182);
+  assert.equal(Object.values(tax).flat().length, 183);
+  assert.equal(contexto.window.RELACIONES_TIPOS.length, 183);
 });
 
 test('Taxonomía: COMUNICACIONALES y traslados a TERRITORIAL', () => {
@@ -592,9 +646,9 @@ test('Taxonomía: COMUNICACIONALES y traslados a TERRITORIAL', () => {
   );
   const tax = contexto.window.TAXONOMIA_RELACIONES;
   assert.deepEqual(JSON.parse(JSON.stringify(tax.Comunicacional)), [
+    'Correo/Emisario',
     'Correspondientes legales',
     'Correspondientes personales',
-    'Correo/Emisario',
     'Remitente – Mensajero',
   ]);
   assert.equal(contexto.window.RELACIONES_CATEGORIAS_PLURAL.Comunicacional, 'Comunicacionales');
@@ -650,6 +704,12 @@ test('Taxonomía: restricciones de origen y destino por tipo de relación', () =
   assert.equal(w.relacionPermitida('Espía/Infiltrado', 'persona', 'institucion'), true);
   assert.equal(w.relacionPermitida('Espía/Infiltrado', 'persona', 'patrimonio'), true);
   assert.equal(w.relacionPermitida('Espía/Infiltrado', 'persona', 'persona'), false);
+  assert.equal(w.relacionPermitida('Comprador – Vendedor', 'patrimonio', 'patrimonio'), true);
+  assert.equal(w.relacionPermitida('Comprador – Vendedor', 'patrimonio', 'persona'), true);
+  assert.equal(w.relacionPermitida('Financista/Inversor', 'persona', 'patrimonio'), true);
+  assert.equal(w.relacionPermitida('Financista/Inversor', 'patrimonio', 'persona'), false);
+  assert.equal(w.relacionPermitida('Proveedor – Receptador', 'persona', 'patrimonio'), true);
+  assert.equal(w.relacionPermitida('Proveedor – Receptador', 'patrimonio', 'persona'), true);
   assert.equal(w.restriccionRelacion('Guardia – Dependiente'), null);
   assert.ok(!w.relacionesPorOrigen('persona').includes('Guardia – Dependiente'));
   assert.ok(w.relacionesPorOrigen('persona').includes('Espía/Infiltrado'));
@@ -699,9 +759,9 @@ test('Taxonomía: restricciones de origen y destino por tipo de relación', () =
   assert.equal(w.relacionPermitida('Comitente – Comisionista', 'persona', 'institucion'), true);
   assert.equal(w.relacionPermitida('Comitente – Comisionista', 'persona', 'patrimonio'), false);
   assert.equal(w.relacionPermitida('Embargador – Embargado', 'persona', 'patrimonio'), false);
-  assert.equal(w.relacionPermitida('Financista/Inversor', 'persona', 'patrimonio'), false);
+  assert.equal(w.relacionPermitida('Financista/Inversor', 'persona', 'patrimonio'), true);
   assert.equal(w.relacionPermitida('Permutantes', 'persona', 'patrimonio'), false);
-  assert.equal(w.relacionPermitida('Proveedor – Receptador', 'persona', 'patrimonio'), false);
+  assert.equal(w.relacionPermitida('Proveedor – Receptador', 'persona', 'patrimonio'), true);
   assert.equal(w.relacionPermitida('Amotinado/Sublevado', 'persona', 'lugar'), true);
   assert.equal(w.relacionPermitida('Jefe/Gobernador', 'persona', 'institucion'), true);
   assert.equal(w.relacionPermitida('Mayordomo/Administrador', 'persona', 'institucion'), true);
@@ -714,7 +774,11 @@ test('Taxonomía: restricciones de origen y destino por tipo de relación', () =
   assert.equal(w.relacionPermitida('Tipo personalizado', 'patrimonio', 'lugar'), true);
   assert.deepEqual(JSON.parse(JSON.stringify(w.tiposDestinoRelacion('Sede', 'lugar'))), ['institucion', 'patrimonio']);
   assert.deepEqual(JSON.parse(JSON.stringify(w.tiposDestinoRelacion('Jurisdicción', 'institucion'))), ['lugar', 'patrimonio']);
-  assert.deepEqual(JSON.parse(JSON.stringify(w.relacionesPorOrigen('patrimonio'))), ['Apresado/retenido']);
+  const origenesPatrimonio = JSON.parse(JSON.stringify(w.relacionesPorOrigen('patrimonio')));
+  assert.ok(origenesPatrimonio.includes('Apresado/retenido'));
+  assert.ok(origenesPatrimonio.includes('Comprador – Vendedor'));
+  assert.ok(origenesPatrimonio.includes('Proveedor – Receptador'));
+  assert.ok(!origenesPatrimonio.includes('Financista/Inversor'));
   assert.ok(w.relacionesPorOrigen('persona').includes('Vecino'));
   assert.ok(w.relacionesPorOrigen('institucion').includes('Adscripción'));
 });

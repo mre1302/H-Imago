@@ -40,10 +40,12 @@ function cargarEntidades(overrides = {}) {
     coincidenciaCrear: async () => ok(1),
     coincidenciaEliminar: async () => ok(true),
     cuadernoListar: async () => ok([]),
+    cuadernoObtener: async (id) => ok({ id, contenido: '', fojas: [] }),
     cuadernoCrear: async () => ok({ id: 1, fojas: [] }),
     cuadernoActualizar: async () => ok(true),
     cuadernoEliminar: async () => ok(true),
     bloqueListar: async () => ok([]),
+    bloqueObtener: async (id) => ok({ id, datos: {} }),
     bloqueCrear: async () => ok({ id: 1 }),
     bloqueActualizar: async () => ok(true),
     bloqueEliminar: async () => ok(true),
@@ -289,7 +291,7 @@ test('UI de relaciones: el origen lugar solo ofrece Sede y destinos instituciona
   window.MODULOS.lugar.desmontar();
 });
 
-test('UI de relaciones: Patrimonio solo ofrece Apresado/retenido como origen', async () => {
+test('UI de relaciones: Patrimonio puede originar compras, proveeduría y retención', async () => {
   const window = cargarEntidades();
   const cont = window.document.getElementById('contenido');
   await window.MODULOS.patrimonio.montar(cont, { id: 1, nombre: 'Proyecto' }, {});
@@ -299,7 +301,11 @@ test('UI de relaciones: Patrimonio solo ofrece Apresado/retenido como origen', a
 
   const [selTipo, , selVocab] = [...cont.querySelectorAll('.form-relacion select')];
   const tipos = [...selVocab.options].map((o) => o.value).filter(Boolean);
-  assert.deepEqual(tipos, ['Apresado/retenido', '__otro__']);
+  assert.ok(tipos.includes('Apresado/retenido'));
+  assert.ok(tipos.includes('Comprador – Vendedor'));
+  assert.ok(tipos.includes('Proveedor – Receptador'));
+  assert.ok(!tipos.includes('Financista/Inversor'));
+  assert.ok(tipos.includes('__otro__'));
   assert.match(cont.querySelector('.form-relacion-pista').textContent, /Elige un tipo de relación/);
 
   selVocab.value = 'Apresado/retenido';
@@ -370,6 +376,7 @@ test('UI de relaciones: una relación heredada fuera de la taxonomía se marca c
   const relacion = cont.querySelector('.relacion-item');
   assert.ok(relacion.classList.contains('relacion-fuera-taxonomia'));
   assert.ok(relacion.querySelector('.rel-aviso'));
+  assert.match(relacion.querySelector('.relacion-tipo-texto').textContent, /↔/);
 
   relacion.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
   await new Promise((r) => setTimeout(r, 20));
@@ -408,6 +415,52 @@ test('UI de entidades: un cuaderno guardado se puede editar', async () => {
   btnEditar.click();
   assert.equal(tarjeta.querySelector('textarea').readOnly, false, 'EDITAR debe permitir escribir');
   window.MODULOS.fuente.desmontar();
+});
+
+test('UI de entidades: un cuaderno resumen carga la transcripción bajo demanda', async () => {
+  let obtenidos = 0;
+  const window = cargarEntidades({
+    cuadernoListar: async () => ({
+      ok: true,
+      datos: [{ id: 10, fuente_id: 1, posicion: 0, fojas: [], _resumen: true }],
+    }),
+    cuadernoObtener: async (id) => {
+      obtenidos++;
+      return { ok: true, datos: { id, contenido: 'Texto completo', fojas: [] } };
+    },
+  });
+  const cont = window.document.getElementById('contenido');
+  await window.MODULOS.fuente.montar(cont, { id: 1, nombre: 'Proyecto' }, {
+    seleccionar: { tipo: 'fuente', id: 1 },
+  });
+  await new Promise((r) => setTimeout(r, 80));
+  const tarjeta = cont.querySelector('.cuaderno');
+  const area = tarjeta.querySelector('textarea');
+  assert.equal(obtenidos, 0, 'el listado no debe traer la transcripción completa');
+  assert.equal(area.value, '');
+  assert.equal(area.readOnly, true);
+  const btnEditar = [...tarjeta.querySelectorAll('.cuaderno-acciones .btn')]
+    .find((b) => b.textContent === 'EDITAR');
+  btnEditar.click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(obtenidos, 1);
+  assert.equal(area.value, 'Texto completo');
+  assert.equal(area.readOnly, false);
+  window.MODULOS.fuente.desmontar();
+});
+
+test('Sugerencias de bloques: se extraen sin enviar el JSON completo', () => {
+  const { recolectarSugerenciasBloques } = require('../lib/sugerencias-bloques');
+  const mapa = recolectarSugerenciasBloques([
+    { nombres: 'Ana', institucion_texto: 'Cabildo', anio: 1520 },
+    '{"lugar":"Sevilla","titulo":"Acta"}',
+    '{json roto',
+  ]);
+  assert.ok(mapa.NOMBRES.includes('Ana'));
+  assert.ok(mapa['INSTITUCIÓN'].includes('Cabildo'));
+  assert.ok(mapa.LUGAR.includes('Sevilla'));
+  assert.ok(mapa['*'].includes('Acta'));
+  assert.ok(mapa.ANIO.includes('1520'));
 });
 
 test('UI de relaciones: un doble clic no duplica la relación', async () => {

@@ -13,7 +13,7 @@ const { recolectarReferenciasBloque } = require('./bloques-referencias');
 const { corregirSedesAutomaticasInvertidas } = require('./relaciones-automaticas');
 const { renombrarTiposRelacion } = require('./migracion-relaciones');
 
-const ESQUEMA_VERSION_MYSQL = 9;
+const ESQUEMA_VERSION_MYSQL = 10;
 
 async function crearEsquemaMySQL(pool, config) {
     /* Si el esquema ya está al día no se ejecuta DDL: permite usar cuentas
@@ -253,8 +253,6 @@ async function crearEsquemaMySQL(pool, config) {
     for (const sentencia of sql) {
       await pool.query(sentencia);
     }
-    await migrarReferenciasBloquesMySQL(pool);
-
     await pool.query(
       `CREATE TABLE IF NOT EXISTS schema_migrations (
         version INT PRIMARY KEY,
@@ -270,13 +268,15 @@ async function crearEsquemaMySQL(pool, config) {
     const [previos] = await pool.query('SELECT COUNT(*) AS n FROM proyectos');
     const hayProyectos = Number(previos[0]?.n || 0) > 0;
     if (hayProyectos) {
-      const copiaPrevia = respaldarMySQL(config);
+      const copiaPrevia = await respaldarMySQL(config);
       if (!copiaPrevia) {
         throw new Error('No se pudo crear la copia de seguridad de MySQL antes de migrar. '
           + 'Instala mysqldump o indica HIMAGO_MYSQLDUMP; la migración se ha detenido para no perder datos.');
       }
       console.log(`[mysql] Copia previa a la migración: ${copiaPrevia}`);
     }
+    /* Reconstruir referencias solo después de tener una copia válida. */
+    await migrarReferenciasBloquesMySQL(pool);
     /* Migraciones: proyectos anteriores (esquema de texto libre) */
     try {
       await pool.query('ALTER TABLE proyectos ADD COLUMN creador VARCHAR(255) NULL');
@@ -589,6 +589,7 @@ async function crearEsquemaMySQL(pool, config) {
       }
     }
 
+    await migrarV10MySQL(pool);
     await pool.query(
       'INSERT IGNORE INTO schema_migrations (version) VALUES (?)',
       [ESQUEMA_VERSION_MYSQL]
@@ -596,14 +597,93 @@ async function crearEsquemaMySQL(pool, config) {
     }
 }
 
+async function migrarV10MySQL(pool) {
+  await pool.query(
+    `DELETE FROM relaciones
+     WHERE origen_tipo = destino_tipo AND origen_id = destino_id
+       AND (procedencia = 'AUTOMATIZADA' OR bloque_id IS NOT NULL)`
+  );
+  await pool.query(
+    `UPDATE relaciones r
+     LEFT JOIN bloques_registro b ON b.id = r.bloque_id
+     SET r.bloque_id = NULL
+     WHERE r.procedencia = 'EDITADA' AND r.bloque_id IS NOT NULL AND b.id IS NULL`
+  );
+
+  /* MySQL evalúa las asignaciones de izquierda a derecha; hay que leer los
+     dos valores originales desde una tabla derivada para no perder uno. */
+  await pool.query(
+    `UPDATE coincidencias c
+     JOIN (
+       SELECT id, LEAST(entidad_a, entidad_b) AS a, GREATEST(entidad_a, entidad_b) AS b
+       FROM coincidencias WHERE entidad_a > entidad_b
+     ) x ON x.id = c.id
+     SET c.entidad_a = x.a, c.entidad_b = x.b`
+  );
+  await pool.query(
+    `DELETE c1 FROM coincidencias c1
+     JOIN coincidencias c2
+       ON c1.proyecto_id = c2.proyecto_id
+      AND c1.tipo = c2.tipo
+      AND c1.entidad_a = c2.entidad_a
+      AND c1.entidad_b = c2.entidad_b
+      AND c1.id > c2.id`
+  );
+  try {
+    await pool.query(
+      'ALTER TABLE coincidencias ADD UNIQUE INDEX uq_coincidencia_par (proyecto_id, tipo, entidad_a, entidad_b)'
+    );
+  } catch (err) {
+    if (!err || !['ER_DUP_KEYNAME', 'ER_DUP_KEY'].includes(err.code)) {
+      console.warn(`[mysql] No se pudo crear uq_coincidencia_par: ${err.message}`);
+      await asegurarIndiceMySQL(
+        pool,
+        'coincidencias',
+        'idx_coincidencia_par',
+        '(proyecto_id, tipo, entidad_a, entidad_b)'
+      );
+    }
+  }
+
+  const [cuadernos] = await pool.query(
+    'SELECT id, fuente_id FROM cuadernos ORDER BY fuente_id, posicion, id'
+  );
+  let fuente = null;
+  let posicion = 0;
+  for (const cuaderno of cuadernos) {
+    if (String(cuaderno.fuente_id) !== String(fuente)) {
+      fuente = cuaderno.fuente_id;
+      posicion = 0;
+    }
+    posicion++;
+    await pool.query('UPDATE cuadernos SET posicion = ? WHERE id = ?', [posicion, cuaderno.id]);
+  }
+  try {
+    await pool.query(
+      'ALTER TABLE cuadernos ADD UNIQUE INDEX uq_cuaderno_posicion (fuente_id, posicion)'
+    );
+  } catch (err) {
+    if (!err || !['ER_DUP_KEYNAME', 'ER_DUP_KEY'].includes(err.code)) {
+      console.warn(`[mysql] No se pudo crear uq_cuaderno_posicion: ${err.message}`);
+      await asegurarIndiceMySQL(
+        pool,
+        'cuadernos',
+        'idx_cuaderno_posicion',
+        '(fuente_id, posicion)'
+      );
+    }
+  }
+}
+
 async function migrarReferenciasBloquesMySQL(pool) {
-  await pool.query('DELETE FROM bloque_referencias');
   const [bloques] = await pool.query('SELECT id, tipo, datos FROM bloques_registro');
   for (const bloque of bloques) {
     let datos;
     try {
       datos = bloque.datos ? JSON.parse(bloque.datos) : {};
     } catch {
+      /* Si el bloque está corrupto, conservar sus referencias anteriores:
+         reconstruirlas desde cero las perdería. */
       continue;
     }
     if (!datos || typeof datos !== 'object' || Array.isArray(datos)) continue;
@@ -615,6 +695,7 @@ async function migrarReferenciasBloquesMySQL(pool) {
     } catch {
       continue;
     }
+    await pool.query('DELETE FROM bloque_referencias WHERE bloque_id = ?', [bloque.id]);
     for (const [tipo, conjunto] of Object.entries(ids)) {
       for (const valor of conjunto) {
         const entidadId = Number(valor);

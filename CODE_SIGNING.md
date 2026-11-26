@@ -19,8 +19,8 @@ signed executable and signed in a second request.
 
 ## Linux artifacts
 
-Linux artifacts are outside the scope of Authenticode and SignPath. From version
-0.0.29, each release publishes `SHA256SUMS-linux.txt` and a GitHub build provenance
+Linux artifacts are outside the scope of Authenticode and SignPath. Starting with
+the next public release, each release publishes `SHA256SUMS-linux.txt` and a GitHub build provenance
 attestation for the AppImage and the `.deb` package. The workflow is
 [`.github/workflows/linux-release.yml`](.github/workflows/linux-release.yml).
 
@@ -33,6 +33,9 @@ gh attestation verify H-IMAGO-<version>.AppImage --repo mre1302/H-Imago
 
 - Source code: <https://github.com/mre1302/H-Imago>
 - Workflow: [`.github/workflows/windows-release.yml`](.github/workflows/windows-release.yml)
+- Reference artifact configurations: [`.signpath/README.md`](.signpath/README.md).
+  The XML files are copied into SignPath.io; the workflow does not read them
+  directly and the repository stores no signing secrets.
 - Builds run on GitHub-hosted `windows-latest` runners from the public repository.
 - The workflow runs `npm ci`, the project checks and the Windows x64 build.
 - Before packaging, the workflow verifies that the executable metadata contains the

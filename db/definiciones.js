@@ -27,6 +27,7 @@ const TIPOS_RELACION_RENOMBRADOS = {
   'Sobrestima': 'Sobrestimado',
   'Subestima': 'Subestimado',
   'Violencia': 'Violentador – Violentado',
+  'Recluso': 'Arrestado',
 };
 
 const normalizarTipoRelacion = (tipo) => {

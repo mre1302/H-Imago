@@ -11,8 +11,10 @@
      qué entidad va primero; la taxonomía solo nombra los dos lados.
    · « / » agrupa tópicos de un mismo lado (variantes o equivalencias):
      «Padrino/Madrina – Ahijado».
-   · Etiquetas sin « – » son simétricas: ambos lados reciben la misma
-     etiqueta («Hermanos», «Correspondientes personales», «Socios»…).
+   · Las etiquetas sin « – » comparten el mismo nombre en ambos lados
+     («Hermanos», «Correspondientes personales», «Socios»…). La flecha simple
+     o doble se decide por RELACIONES_BIDIRECCIONALES, tomada de la columna
+     DIRECCIÓN de NRELACIONES.
    · La CATEGORÍA solo ordena el listado; las restricciones de origen y
      destino se aplican en el formulario y en el alta manual. */
 
@@ -188,6 +190,7 @@ const TAXONOMIA_RELACIONES = {
     'Simpatía',
     'Sobrestimado',
     'Subestimado',
+    'Traidor – Traicionado',
     'Violentador – Violentado',
   ],
   Territorial: [
@@ -202,7 +205,7 @@ const TAXONOMIA_RELACIONES = {
     'Pasajero',
     'Polizón',
     'Prisionero/Cautivo',
-    'Recluso',
+    'Arrestado',
     'Residente',
     'Tripulante',
     'Vecino',
@@ -218,6 +221,13 @@ const TAXONOMIA_RELACIONES = {
     'Mejor postor',
   ],
 };
+
+/* Orden alfabético dentro de cada categoría. Se aplica antes de construir
+   RELACIONES_TIPOS para que formularios, buscadores y paneles compartan el
+   mismo orden. */
+for (const etiquetas of Object.values(TAXONOMIA_RELACIONES)) {
+  etiquetas.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
 
 /* Restricciones de entidades por tipo de relación, según NRELACIONES:
    [tipos de origen permitidos, tipos de destino permitidos]. */
@@ -253,12 +263,12 @@ const RESTRICCIONES_RELACION = {
   'Arrendatario – Arrendador': R(['persona', 'institucion'], ['persona', 'institucion']),
   'Asentista/contratista': R(['persona', 'institucion'], ['persona', 'institucion']),
   'Competidores': R(['persona', 'institucion'], ['persona', 'institucion']),
-  'Comprador – Vendedor': R(['persona', 'institucion'], ['persona', 'institucion']),
+  'Comprador – Vendedor': R(['persona', 'institucion', 'patrimonio'], ['persona', 'institucion', 'patrimonio']),
   'Comitente – Comisionista': R(['persona', 'institucion'], ['persona', 'institucion']),
   'Embargador – Embargado': R(['persona', 'institucion'], ['persona', 'institucion']),
-  'Financista/Inversor': R(['persona', 'institucion'], ['persona', 'institucion']),
+  'Financista/Inversor': R(['persona', 'institucion'], ['persona', 'institucion', 'patrimonio']),
   'Permutantes': R(['persona', 'institucion'], ['persona', 'institucion']),
-  'Proveedor – Receptador': R(['persona', 'institucion'], ['persona', 'institucion']),
+  'Proveedor – Receptador': R(['persona', 'institucion', 'patrimonio'], ['persona', 'institucion', 'patrimonio']),
   'Socios': R(['persona', 'institucion'], ['persona', 'institucion']),
   'Abuelo – Nieto': R(['persona'], ['persona']),
   'Abuelo político – Nieto político': R(['persona'], ['persona']),
@@ -379,6 +389,7 @@ const RESTRICCIONES_RELACION = {
   'Simpatía': R(['persona'], ['persona']),
   'Sobrestimado': R(['persona'], ['persona']),
   'Subestimado': R(['persona'], ['persona']),
+  'Traidor – Traicionado': R(['persona'], ['persona']),
   'Violentador – Violentado': R(['persona'], ['persona']),
   'Comunero': R(['persona'], ['patrimonio']),
   'Mediero': R(['persona'], ['patrimonio']),
@@ -391,7 +402,7 @@ const RESTRICCIONES_RELACION = {
   'Pasajero': R(['persona'], ['patrimonio']),
   'Polizón': R(['persona'], ['patrimonio']),
   'Prisionero/Cautivo': R(['persona'], ['persona', 'institucion', 'patrimonio']),
-  'Recluso': R(['persona'], ['institucion', 'patrimonio']),
+  'Arrestado': R(['persona'], ['institucion', 'patrimonio']),
   'Residente': R(['persona'], ['lugar']),
   'Tripulante': R(['persona'], ['patrimonio']),
   'Vecino': R(['persona'], ['lugar']),
@@ -433,9 +444,69 @@ for (const [categoria, etiquetas] of Object.entries(TAXONOMIA_RELACIONES)) {
   }
 }
 
+/* Dirección de representación gráfica según NRELACIONES (columna DIRECCIÓN).
+   No siempre coincide con la convención de la etiqueta: por ejemplo,
+   «Simpatía» no lleva guion pero se registra en un solo sentido, mientras que
+   «Correspondientes legales» se dibuja con doble flecha. */
+const RELACIONES_BIDIRECCIONALES = new Set([
+  'Correspondientes legales',
+  'Correspondientes personales',
+  'Competidores',
+  'Permutantes',
+  'Socios',
+  'Compadres',
+  'Concuñados',
+  'Consuegros',
+  'Cónyuges',
+  'Cuñados',
+  'Gemelos',
+  'Hermanastros',
+  'Hermanos',
+  'Mellizos',
+  'Primos',
+  'Primos 2°',
+  'Primos 3°',
+  'Primos políticos',
+  'Litigantes',
+  'Amantes',
+  'Ambivalentes',
+  'Amigos',
+  'Animadversión',
+  'Concubinos',
+  'Confidentes',
+  'Conocidos',
+  'Discordia',
+  'Enamorados',
+  'Enemigos',
+  'Indiferentes',
+  'Paisanos',
+  'Pretendientes',
+  'Prometidos',
+  'Reconciliados',
+  'Rivales',
+  'Enemistados',
+]);
+
+for (const entrada of RELACIONES_TIPOS) {
+  entrada.bidireccional = RELACIONES_BIDIRECCIONALES.has(entrada.etiqueta);
+}
+
+/** ¿La relación se representa con flecha en ambos sentidos? */
+const esRelacionBidireccional = (etiqueta) => (
+  RELACIONES_BIDIRECCIONALES.has(String(etiqueta || '').trim())
+);
+
+/** Símbolo de dirección de una relación: ↔ si es bidireccional, → si no. */
+const flechaRelacion = (etiqueta) => (
+  esRelacionBidireccional(etiqueta) ? '↔' : '→'
+);
+
 raiz.TAXONOMIA_RELACIONES = TAXONOMIA_RELACIONES;
 raiz.RELACIONES_TIPOS = RELACIONES_TIPOS;
 raiz.RESTRICCIONES_RELACION = RESTRICCIONES_RELACION;
+raiz.RELACIONES_BIDIRECCIONALES = RELACIONES_BIDIRECCIONALES;
+raiz.esRelacionBidireccional = esRelacionBidireccional;
+raiz.flechaRelacion = flechaRelacion;
 
 /** Restricción [origen, destino] de una etiqueta, o null si es externa. */
 const restriccionRelacion = (etiqueta) => (

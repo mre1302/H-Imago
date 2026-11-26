@@ -4,7 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { execFileSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+
+const ejecutarArchivo = promisify(execFile);
 
 /** Directorio propio del usuario, no una ruta predecible en /tmp. */
 function directorioCopias() {
@@ -57,9 +60,20 @@ function crearArchivoCredenciales(directorio, cfg) {
   return archivo;
 }
 
+function crearArchivoCa(directorio, cfg) {
+  if (!cfg.sslCa) return null;
+  const archivo = path.join(
+    directorio,
+    `.mysqldump-ca-${process.pid}-${crypto.randomBytes(8).toString('hex')}.pem`
+  );
+  fs.writeFileSync(archivo, String(cfg.sslCa), { encoding: 'utf8', mode: 0o600 });
+  try { fs.chmodSync(archivo, 0o600); } catch { /* Windows */ }
+  return archivo;
+}
+
 /** Copia la base MySQL/MariaDB antes de una migración mediante mysqldump.
     Devuelve la ruta del archivo o null si no se pudo crear. */
-function respaldarMySQL(cfg) {
+async function respaldarMySQL(cfg) {
   if (!cfg || !cfg.database) return null;
   const directorio = directorioCopias();
   const base = String(cfg.database).replace(/[^A-Za-z0-9_-]/g, '_');
@@ -69,19 +83,23 @@ function respaldarMySQL(cfg) {
     `himago-${base}-${marca}-${crypto.randomBytes(6).toString('hex')}.sql`
   );
   const credenciales = crearArchivoCredenciales(directorio, cfg);
+  const certificadoCa = crearArchivoCa(directorio, cfg);
   try {
-    execFileSync(process.env.HIMAGO_MYSQLDUMP || 'mysqldump', [
+    const argumentos = [
       `--defaults-extra-file=${credenciales}`,
       `--host=${cfg.host || '127.0.0.1'}`,
       `--port=${Number(cfg.port) || 3306}`,
       '--single-transaction',
       '--routines',
       '--events',
-      `--result-file=${destino}`,
-      cfg.database,
-    ], {
-      stdio: ['ignore', 'ignore', 'pipe'],
+    ];
+    /* --ssl-ca es aceptado por MySQL y MariaDB; evita que la copia use una
+       configuración TLS distinta a la de la conexión de la aplicación. */
+    if (certificadoCa) argumentos.push(`--ssl-ca=${certificadoCa}`);
+    argumentos.push(`--result-file=${destino}`, cfg.database);
+    await ejecutarArchivo(process.env.HIMAGO_MYSQLDUMP || 'mysqldump', argumentos, {
       timeout: 120000,
+      windowsHide: true,
     });
     try { fs.chmodSync(destino, 0o600); } catch { /* Windows */ }
     limpiarCopias(directorio);
@@ -92,7 +110,10 @@ function respaldarMySQL(cfg) {
     console.warn(`[mysql] No se pudo crear la copia previa a la migración: ${detalle}`);
     return null;
   } finally {
-    try { fs.rmSync(credenciales, { force: true }); } catch { /* ya eliminado */ }
+    for (const archivo of [credenciales, certificadoCa]) {
+      if (!archivo) continue;
+      try { fs.rmSync(archivo, { force: true }); } catch { /* ya eliminado */ }
+    }
   }
 }
 

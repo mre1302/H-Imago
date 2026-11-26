@@ -41,8 +41,8 @@ También puedes ver todos los archivos en la [página de la release](https://git
 
 ### Verificar descargas
 
-A partir de la versión 0.0.29, cada release incluye `SHA256SUMS-windows.txt` y
-`SHA256SUMS-linux.txt`. En Linux:
+A partir de la próxima versión pública, cada release incluye
+`SHA256SUMS-windows.txt` y `SHA256SUMS-linux.txt`. En Linux:
 
 ```bash
 sha256sum -c SHA256SUMS-linux.txt
@@ -51,15 +51,15 @@ sha256sum -c SHA256SUMS-linux.txt
 En Windows (PowerShell):
 
 ```powershell
-Get-FileHash .\H-IMAGO-0.0.29-Setup.exe -Algorithm SHA256
-Get-AuthenticodeSignature .\H-IMAGO-0.0.29-Setup.exe
+Get-FileHash .\H-IMAGO-<versión>-Setup.exe -Algorithm SHA256
+Get-AuthenticodeSignature .\H-IMAGO-<versión>-Setup.exe
 ```
 
 Las builds de Linux no llevan firma Authenticode; su integridad se comprueba con
 las sumas y con la atestación de procedencia de GitHub Actions:
 
 ```bash
-gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
+gh attestation verify H-IMAGO-<versión>.AppImage --repo mre1302/H-Imago
 ```
 
 ## Capturas
@@ -120,7 +120,7 @@ gh attestation verify H-IMAGO-0.0.29.AppImage --repo mre1302/H-Imago
    1.2. Abrir proyecto
    1.3. Salir
 2. **Proyecto**
-   2.1. Vista de grafo — red social histórica (simulación de fuerzas, arrastrar nodos, zoom, filtros, exportar PNG)
+   2.1. Vista de grafo - red social histórica (simulación de fuerzas, arrastrar nodos, zoom, filtros, exportar PNG y Análisis RSH opcional)
    2.2. Georreferenciador — mapa OpenStreetMap (Leaflet) para capturar coordenadas de los lugares
    2.3. Búsqueda general — índice de entidades, relaciones, bloques y transcripciones, con filtros por tipo
    2.4. Personas — fichas prosopográficas
@@ -200,12 +200,13 @@ npm run lint       # ESLint
 npm run check      # sintaxis de los módulos principales
 npm test           # auditoría, mejoras, rutas y MySQL (omitido si no se activa)
 npm run verificar  # lint + check + test
+npm run bench:analisis  # rendimiento de las métricas de Análisis RSH
 ```
 
 La integración MySQL se activa con `HIMAGO_TEST_MYSQL=1` y las variables
 `HIMAGO_MYSQL_*`; GitHub Actions la ejecuta contra un servicio MySQL 8.0. La
-arquitectura, el flujo `.ods → generador → JS` y las migraciones forman parte
-de la documentación interna del proyecto, que no se distribuye con el repositorio.
+arquitectura, el flujo `.ods → generador → JS` y las migraciones se explican en
+[`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 
 
 Al primer arranque la aplicación crea automáticamente la base local SQLite y
@@ -299,11 +300,14 @@ proyecto):
   aproximada («c. 1451») se expresa con el intervalo de años.
 - **Taxonomía de RELACIONES**: las relaciones usan un vocabulario categorizado
   (Clientelar, Comunicacional, Económica, Familiar, Institucional, Legal,
-  Sentimental, Territorial — 182 tipos según la taxonomía del proyecto, en
+  Sentimental, Territorial — 183 tipos según la taxonomía del proyecto, en
   `src/js/modulos/taxonomia-relaciones.js`). La etiqueta « – » nombra el lado origen y el
-  lado destino («Capataz – Subalterno»); « / » agrupa tópicos de un mismo lado;
-  las etiquetas sin « – » son simétricas. Cada tipo declara además qué tipos de
-  entidad pueden actuar como **origen** y como **destino**, según NRELACIONES:
+  lado destino («Capataz – Subalterno»); « / » agrupa tópicos de un mismo lado y
+  las etiquetas sin « – » comparten el mismo nombre en ambos lados.
+  La columna **DIRECCIÓN** de NRELACIONES determina si el vínculo se dibuja con
+  flecha simple o doble. La matriz completa está en
+  [`docs/NRELACIONES.md`](docs/NRELACIONES.md). Cada tipo declara además qué tipos
+  de entidad pueden actuar como **origen** y como **destino**, según NRELACIONES:
   el formulario solo ofrece las combinaciones válidas, ajusta el tipo de destino
   al elegir la relación (y viceversa) y marca con ⚠ las relaciones existentes
   que no cumplan la restricción. Salvo «Apresado/retenido», los patrimonios no
@@ -348,10 +352,11 @@ proyecto):
   «☰ Directorio» de la ficha vuelve al listado alfabético.
 - **Filtro temporal del grafo**: la barra de VISTA DE GRAFO incorpora un rango de
   años con doble deslizador, campos «De / a» y «Afinar intervalo». El rango
-  general se calcula **exclusivamente con los años de RELACIONES**. El gráfico
-  mantiene visibles todas las entidades (sus años de vida son información
-  circunstancial y no filtran la red) y filtra las relaciones cuyo periodo
-  solapa con el rango elegido. Las relaciones sin datación permanecen visibles.
+  general se calcula **exclusivamente con los años de inicio y término de
+  RELACIONES**; el campo **FECHA EXACTA no interviene** en la temporalidad del
+  grafo ni del Análisis RSH. El gráfico mantiene visibles todas las entidades y
+  filtra las relaciones cuyo periodo solapa con el rango elegido. Las relaciones
+  sin datación permanecen visibles.
   Un contador indica cuántas entidades y relaciones quedan a la vista.
 - **Taxonomía de FUENTES**: dos niveles —14 categorías y 64 tipos de fuente—
   según la tabla de taxonomía interna del proyecto. La ficha de fuente
@@ -497,16 +502,44 @@ proyecto):
   clic en un nodo para ver su ficha y sus relaciones; desde ahí puedes saltar
   a su registro. Los filtros por tipo de entidad y por las **8 categorías de
   RELACIONES** reorganizan la red como si los elementos filtrados no existieran;
-  el intervalo temporal filtra las relaciones. La barra de entidades incluye un
-  buscador por nombre, años, oficio o tipo, y la de relaciones un buscador con
-  selector de los 182 tipos. El botón **«Temporalidad»** muestra u oculta los
-  filtros temporales; **«Excluir entidades aisladas»**,
-  desactivado por defecto, oculta las entidades que no tienen ningún año y
-  ninguna relación. Al seleccionar un nodo se
-  resaltan sus conexiones y se muestran los nombres de todas las entidades
-  conectadas; el panel del nodo adapta su contraste al tema claro/oscuro. La
-  exportación PNG se genera al doble de resolución con dos opciones: **toda la
-  red** o **solo el nodo seleccionado y sus conexiones**.
+  el intervalo temporal filtra las relaciones. El panel superior incorpora
+  **«Entidades»** y **«Relaciones»**, que despliegan sus filtros en el mismo
+  espacio que **«Temporalidad»**; solo se muestra un panel a la vez. La barra de
+  entidades busca por nombre, identificador, género, tipo o notas; la de
+  relaciones incluye un selector de los **183 tipos**. La barra de estado
+  muestra entidades y relaciones visibles, filtros activos, **Limpiar filtros**,
+  procedencia, nodos ocultos y el retorno desde una vecindad. **«Excluir
+  entidades aisladas»**, desactivado por defecto, oculta las entidades que no
+  tienen ninguna relación. El grafo y el Análisis RSH solo reciben de cada
+  entidad su nombre y apellidos, identificador, género —en personas— o tipo —en
+  instituciones, lugares y patrimonios— y notas; el resto de la información
+  llega exclusivamente a través de RELACIONES.
+  - **Aristas y detalle**: el botón **«Dirección»** muestra flechas; las
+    relaciones paralelas se agrupan en un único vínculo con grosor proporcional;
+    al pasar el ratón o hacer clic se abre el detalle por tipo, dirección,
+    periodo, procedencia y fuentes, con opciones para ver todas las relaciones o
+    desagregar el par en el lienzo.
+  - **Nodo seleccionado**: el panel incluye ID, notas y fuentes de sus
+    relaciones, y acciones para abrir la ficha, fijar u ocultar el nodo y aislar
+    su vecindad a uno o dos saltos.
+  - **Temporalidad**: histograma de relaciones activas por año y controles de
+    reproducción con ventana y velocidad.
+  - **Vistas, tabla y exportación**: guardar y recuperar combinaciones de
+    filtros, temporalidad, nodos ocultos/fijados y configuración de Análisis
+    RSH; **«Ver como tabla»** ofrece impresión, CSV y hoja de cálculo (.xls);
+    navegación por teclado con flechas, Enter y Escape; **«Opciones PNG»**
+    permite añadir título, leyenda, resumen de filtros y versión imprimible en
+    blanco y negro, además de exportar toda la red o solo el nodo seleccionado
+    y sus conexiones.
+- **Análisis RSH (opcional)**: capa analítica de la vista de grafo. No calcula
+  nada hasta pulsar **«Calcular Análisis RSH»**. Permite grado, intermediación,
+  cercanía, vector propio/PageRank, comunidades Leiden, densidad y componentes;
+  por defecto usa la red completa, relaciones dirigidas y aristas independientes.
+  El tamaño de nodo y el color por comunidad son opcionales. Los resultados se
+  pueden filtrar, ordenar y exportar a CSV con la definición de red y la
+  metodología. La documentación metodológica completa está en
+  [`docs/ANALISIS-RSH.md`](docs/ANALISIS-RSH.md). Los indicadores describen la red
+  documentada, no la red histórica completa.
 - La configuración de la base de datos se guarda en el directorio de datos de
   usuario de Electron (`himago-config.json`); nunca se guarda en el código. En
   modo personal, el archivo `himago.db` vive en esa misma carpeta salvo que se
@@ -518,7 +551,7 @@ proyecto):
   ediciones o usar secciones distintas.
 
 La arquitectura detallada, el flujo `.ods → generador → JS` y las políticas de
-migración y pruebas forman parte de la documentación interna del proyecto.
+migración y pruebas están en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 
 ## Estructura del código
 
@@ -528,6 +561,7 @@ preload.js               Puente seguro renderer ↔ proceso principal
 db/database.js           Fachada de datos: SQLite o MySQL/MariaDB
 db/sqlite.js             Motor SQLite y esquema local
 db/sqlite-worker.js      Hilo de trabajo que ejecuta SQLite sin bloquear la UI
+db/analisis-rsh-worker.js Worker de cálculo del Análisis RSH
 db/fechas-legadas.js     Extracción segura de años/rangos de campos antiguos
 db/busqueda.js           Normalización, puntuación y fragmentos de la búsqueda
 db/definiciones.js       Tipos, campos e identificadores comunes
@@ -538,7 +572,10 @@ db/mysql-esquema.js      Esquema y migraciones MySQL
 db/sqlite.js             Motor SQLite (modo personal)
 db/relaciones-automaticas.js Reglas y reconciliación de bloques
 db/migracion-relaciones.js Renombrados de etiquetas compartidos SQLite/MySQL
+lib/analisis-rsh/         Red analítica, grado, componentes, densidad,
+                          centralidades y comunidades Leiden
 scripts/autoprueba.js    Autoprueba de interfaz (solo desarrollo)
+scripts/benchmark-analisis-rsh.js Benchmark de umbrales del Análisis RSH
 src/
   index.html             Pantalla 1: Index
   proyecto.html          Pantalla 2: Proyecto
@@ -550,7 +587,7 @@ src/
     index.js             Lógica del Index
     proyecto.js          Navegación, guardar y contadores
     modulos/
-      taxonomia-relaciones.js   Taxonomía de RELACIONES (182 tipos · 8 categorías;
+      taxonomia-relaciones.js   Taxonomía de RELACIONES (183 tipos · 8 categorías;
                                 restricciones de origen → destino)
       taxonomia-fuentes.js      Taxonomía de FUENTES (64 tipos · 14 categorías;
                                 fuente interna no distribuida)
@@ -560,10 +597,24 @@ src/
       fecha-historica.js        Parser y calendario histórico juliano/gregoriano
       entidades.js       Personas/Instituciones/Lugares/Patrimonios/Fuentes
       grafo.js           Vista de grafo (canvas + física)
+      analisis-rsh-ui.js Panel opcional de Análisis RSH
       geo.js             Georreferenciador (Leaflet)
       busqueda.js        Búsqueda general (índice, filtros y resultados)
   vendor/leaflet/        Copia local de Leaflet incluida en la distribución
+  vendor/leiden/         Leiden vendorizado (leiden-ts 0.1.0, MIT)
 ```
+
+## Documentación
+
+- [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md): capas, migraciones, búsqueda,
+  grafo, Análisis RSH y pruebas.
+- [`docs/ANALISIS-RSH.md`](docs/ANALISIS-RSH.md): red analítica, indicadores,
+  interpretación y rendimiento.
+- [`docs/NRELACIONES.md`](docs/NRELACIONES.md): matriz vigente de los 183 tipos
+  de relación.
+- [`CODE_SIGNING.md`](CODE_SIGNING.md): política y proceso de firma.
+- [`.signpath/README.md`](.signpath/README.md): configuración de referencia de
+  los artefactos de SignPath.
 
 ## Contribuir
 

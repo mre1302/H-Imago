@@ -286,6 +286,7 @@ function fabricarModuloEntidad(def) {
   let generacionMontaje = 0;
   let generacionFormulario = 0;
   let generacionRelaciones = 0;
+  let generacionSeleccion = 0;
   let guardandoFicha = false;
   let temporizadorSnapshot = null;
   let clavesOrden = new WeakMap();
@@ -322,6 +323,28 @@ function fabricarModuloEntidad(def) {
       && typeof BloquesRegistro.invalidarCache === 'function') {
       BloquesRegistro.invalidarCache();
     }
+  }
+
+  /** Anula las referencias al formulario anterior para que sus closures no
+      retengan inputs, selects enormes ni listeners ya retirados del DOM. */
+  function limpiarRefsFormulario() {
+    refs.inputs = {};
+    refs.camposActuales = null;
+    refs.formRel = null;
+    refs.guardarRelacionPendiente = null;
+    refs.cargarRelacion = null;
+    refs.limpiarFormRel = null;
+    refs.pintarCampos = null;
+    refs.listaRel = null;
+    refs.barraCat = null;
+    refs.bloqueRelaciones = null;
+    refs.bloqueFusiones = null;
+    refs.bloqueCuadernos = null;
+    refs.btnGuardar = null;
+    refs.btnAnadir = null;
+    refs.btnGuardarRelacion = null;
+    refs.btnCancelarEdicion = null;
+    refs.pistaEdicion = null;
   }
 
   function registrarTarea(tarea) {
@@ -428,6 +451,7 @@ function fabricarModuloEntidad(def) {
         cacheReferencias[tipoRef] = resultado[i + 1];
       });
     } catch (err) {
+      if (generacion !== generacionMontaje || !cont || !refs.lista?.isConnected) return;
       refs.lista.appendChild(el('div', 'vacio error', err.message));
       return;
     }
@@ -477,21 +501,33 @@ function fabricarModuloEntidad(def) {
   }
 
   async function seleccionar(fila) {
+    const solicitud = ++generacionSeleccion;
+    const montaje = generacionMontaje;
+    const vigente = () => (
+      solicitud === generacionSeleccion
+      && montaje === generacionMontaje
+      && Boolean(cont)
+      && Boolean(refs.lista)
+    );
     if (hayCambios()) {
       const ok = await confirmar('Hay cambios sin guardar en la ficha. ¿Descartarlos?', 'Cambios sin guardar');
-      if (!ok) return;
+      if (!ok || !vigente()) return;
     }
+    let datos;
     try {
-      filaActual = await llamar(api.entidadObtener(claveTipo(), fila.id, proyecto.id));
+      datos = await llamar(api.entidadObtener(claveTipo(), fila.id, proyecto.id));
     } catch (err) {
+      if (!vigente()) return;
       aviso(`No se pudo abrir la ficha: ${err.message}`, 'error');
       return;
     }
+    if (!vigente()) return;
+    filaActual = datos;
     modo = 'editar';
     sucio = false;
     relacionSucio = false;
     dibujarLista();
-    abrirFormulario(filaActual);
+    abrirFormulario(datos);
   }
 
   /* ---------------- Directorio alfabético ---------------- */
@@ -585,6 +621,7 @@ function fabricarModuloEntidad(def) {
 
   function mostrarDirectorio() {
     generacionFormulario++;
+    generacionSeleccion++;
     modo = 'nada';
     filaActual = null;
     sucio = false;
@@ -596,10 +633,10 @@ function fabricarModuloEntidad(def) {
       refs.limpiarCierreFuentes();
       refs.limpiarCierreFuentes = null;
     }
-    refs.guardarRelacionPendiente = null;
-    refs.limpiarFormRel = null;
-    refs.cargarRelacion = null;
-    refs.pintarCampos = null;
+    limpiarRefsFormulario();
+    if (window.FechaHistorica && typeof window.FechaHistorica.cerrar === 'function') {
+      window.FechaHistorica.cerrar();
+    }
     limpiarDeshacer();
     refs.detalle.innerHTML = '';
     refs.detalle.scrollTop = 0;
@@ -877,7 +914,10 @@ function fabricarModuloEntidad(def) {
           .map((f) => (typeof f === 'object' ? f.titulo : f))
           .filter(Boolean).join(', ');
         const tr = el('tr');
-        tr.appendChild(el('td', '', `${r.origen_nombre} → ${r.destino_nombre}`));
+        const flecha = typeof window.flechaRelacion === 'function'
+          ? window.flechaRelacion(r.tipo)
+          : '→';
+        tr.appendChild(el('td', '', `${r.origen_nombre} ${flecha} ${r.destino_nombre}`));
         tr.appendChild(el('td', '', r.tipo || '—'));
         tr.appendChild(el('td', '', r.procedencia || 'MANUAL'));
         tr.appendChild(el('td', '', fechas || '—'));
@@ -905,13 +945,19 @@ function fabricarModuloEntidad(def) {
   function abrirFormulario(fila) {
     generacionFormulario++;
     generacionRelaciones++;
+    generacionSeleccion++;
     filaActual = fila;
     modo = fila ? 'editar' : 'nuevo';
     sucio = false;
+    relacionSucio = false;
     tareasPendientes.clear();
     if (refs.limpiarCierreFuentes) {
       refs.limpiarCierreFuentes();
       refs.limpiarCierreFuentes = null;
+    }
+    limpiarRefsFormulario();
+    if (window.FechaHistorica && typeof window.FechaHistorica.cerrar === 'function') {
+      window.FechaHistorica.cerrar();
     }
     filtroCategoriaRel = null;
     relacionEnEdicion = null;
@@ -1178,6 +1224,9 @@ function fabricarModuloEntidad(def) {
     let ordenBloques = 'asc';
     let sugerenciasBloques = {};
     let creandoBloque = false;
+    let creandoCuaderno = false;
+    let cargasIniciales = 0;
+    let liberarCargaInicial = null;
 
     /* Panel de bloques de registro: periodos → tipos de formulario */
     const panelBloques = el('div', 'bloques-registro');
@@ -1374,15 +1423,49 @@ function fabricarModuloEntidad(def) {
 
       let editor = null;
       let guardado = registro.datos || {};
+      let datosCargados = !registro._resumen;
       let editorSucio = false;
       let quitarTarea = null;
-      let guardandoBloque = false;
+      let guardadoBloquePromesa = null;
+      let cargaDatosPromesa = null;
+
+      async function asegurarDatos() {
+        if (datosCargados) return true;
+        if (cargaDatosPromesa) return cargaDatosPromesa;
+        if (!window.api || typeof window.api.bloqueObtener !== 'function') {
+          aviso('Esta versión no puede cargar el bloque bajo demanda.', 'error');
+          return false;
+        }
+        cargaDatosPromesa = (async () => {
+          try {
+            const fila = await llamar(window.api.bloqueObtener(registro.id, proyecto.id));
+            if (!tarjeta.isConnected) return false;
+            if (fila.datosInvalidos) {
+              aviso('El bloque tiene datos dañados; no se puede editar hasta repararlo.', 'error');
+              return false;
+            }
+            guardado = fila.datos || {};
+            registro.datos = guardado;
+            datosCargados = true;
+            return true;
+          } catch (err) {
+            aviso(`No se pudo cargar el bloque: ${err.message}`, 'error');
+            return false;
+          }
+        })().finally(() => { cargaDatosPromesa = null; });
+        return cargaDatosPromesa;
+      }
 
       const resumen = () => {
         if (quitarTarea) { quitarTarea(); quitarTarea = null; }
         editor = null;
         editorSucio = false;
         cuerpo.innerHTML = '';
+        if (!datosCargados) {
+          cuerpo.appendChild(el('div', 'pista',
+            'Bloque guardado. Pulsa «EDITAR» para cargar y editar su contenido.'));
+          return;
+        }
         const completos = (typeof BloquesRegistro !== 'undefined'
           && typeof BloquesRegistro.datosRegistro === 'function')
           ? BloquesRegistro.datosRegistro(esquema, guardado)
@@ -1407,9 +1490,11 @@ function fabricarModuloEntidad(def) {
       };
 
       async function guardarEditor() {
-        if (!editor || guardandoBloque) return true;
-        guardandoBloque = true;
-        try {
+        if (!editor) return true;
+        /* Si ya hay una petición en vuelo, todos los llamadores esperan la
+           misma promesa; nunca se devuelve un éxito prematuro. */
+        if (guardadoBloquePromesa) return guardadoBloquePromesa;
+        guardadoBloquePromesa = (async () => {
           const datos = editor.obtenerDatos();
           await llamar(api.bloqueActualizar(registro.id, datos, proyecto.id));
           guardado = datos;
@@ -1417,8 +1502,11 @@ function fabricarModuloEntidad(def) {
           editorSucio = false;
           notificarCambios();
           return true;
+        })();
+        try {
+          return await guardadoBloquePromesa;
         } finally {
-          guardandoBloque = false;
+          guardadoBloquePromesa = null;
         }
       }
 
@@ -1437,6 +1525,13 @@ function fabricarModuloEntidad(def) {
       async function abrir() {
         cuerpo.innerHTML = '';
         cuerpo.appendChild(el('div', 'pista', 'Cargando formulario…'));
+        if (!await asegurarDatos()) {
+          if (tarjeta.isConnected) {
+            cuerpo.innerHTML = '';
+            cuerpo.appendChild(el('div', 'vacio error', 'No se pudo cargar el contenido del bloque.'));
+          }
+          return;
+        }
         const marcar = () => {
           if (!editorSucio) {
             editorSucio = true;
@@ -1507,12 +1602,18 @@ function fabricarModuloEntidad(def) {
       });
       btnGuardar.addEventListener('click', async () => {
         if (!editor) return;
+        btnGuardar.disabled = true;
         try {
-          await guardarEditor();
+          const ok = await guardarEditor();
+          if (!ok) return;
           aviso('Bloque de registro guardado', 'exito');
           resumen();
           actualizarBotones(false);
-        } catch (err) { aviso(err.message, 'error'); }
+        } catch (err) {
+          aviso(err.message, 'error');
+        } finally {
+          if (btnGuardar.isConnected) btnGuardar.disabled = false;
+        }
       });
       btnCancelar.addEventListener('click', cerrarEditorConAviso);
       btnCerrar.addEventListener('click', cerrarEditorConAviso);
@@ -1521,6 +1622,13 @@ function fabricarModuloEntidad(def) {
         if (!ok) return;
         try {
           await llamar(api.bloqueEliminar(registro.id, proyecto.id));
+          /* Si el editor estaba abierto y sucio, su tarea quedaría huérfana:
+             hayCambios() sería true para siempre y Ctrl+S intentaría guardar
+             un bloque que ya no existe. */
+          if (quitarTarea) { quitarTarea(); quitarTarea = null; }
+          editor = null;
+          editorSucio = false;
+          notificarCambios();
           tarjeta.remove();
           aplicarOrdenBloques();
           aviso('Bloque eliminado', 'exito');
@@ -1535,14 +1643,22 @@ function fabricarModuloEntidad(def) {
         aviso('Guarda la fuente antes de añadir cuadernos.', 'error');
         return;
       }
+      if (creandoCuaderno) return;
+      creandoCuaderno = true;
+      btnCuaderno.disabled = true;
       try {
         const cuaderno = await llamar(api.cuadernoCrear(fuenteId, proyecto.id));
+        if (!lista.isConnected) return;
         const vacio = lista.querySelector('.vacio');
         if (vacio) vacio.remove();
         const tarjeta = crearTarjetaCuaderno(cuaderno, lista.querySelectorAll('.cuaderno').length + 1, { nuevo: true });
         lista.appendChild(tarjeta);
         aviso('Cuaderno creado', 'exito');
       } catch (err) { aviso(err.message, 'error'); }
+      finally {
+        creandoCuaderno = false;
+        if (btnCuaderno.isConnected && cargasIniciales === 0) btnCuaderno.disabled = false;
+      }
     });
 
     btnBloque.addEventListener('click', async () => {
@@ -1570,6 +1686,19 @@ function fabricarModuloEntidad(def) {
       return;
     }
 
+    /* Hasta que no terminen las dos cargas iniciales no se permite crear
+       tarjetas: el HTML se reemplaza con la respuesta y una tarjeta recién
+       creada podría desaparecer de la vista (aunque exista en la BD). */
+    cargasIniciales = 2;
+    btnCuaderno.disabled = true;
+    btnBloque.disabled = true;
+    liberarCargaInicial = () => {
+      if (cargasIniciales > 0) cargasIniciales--;
+      if (cargasIniciales !== 0) return;
+      if (btnCuaderno.isConnected) btnCuaderno.disabled = false;
+      if (btnBloque.isConnected) btnBloque.disabled = false;
+    };
+
     llamar(api.cuadernoListar(fuenteId, proyecto.id)).then((cuadernos) => {
       if (!lista.isConnected) return;
       if (!cuadernos.length) {
@@ -1590,8 +1719,8 @@ function fabricarModuloEntidad(def) {
         }
       });
     }).catch((err) => {
-      lista.appendChild(el('div', 'vacio error', err.message));
-    });
+      if (lista.isConnected) lista.appendChild(el('div', 'vacio error', err.message));
+    }).finally(() => { if (liberarCargaInicial) liberarCargaInicial(); });
 
     function crearTarjetaBloqueIncompatible(registro, motivo) {
       const tarjeta = el('div', 'bloque-registrado');
@@ -1632,6 +1761,12 @@ function fabricarModuloEntidad(def) {
     llamar(api.bloqueListar(fuenteId, proyecto.id)).then(async (bloques) => {
       if (!listaBloquesReg.isConnected) return;
       sugerenciasBloques = recolectarSugerenciasBloques(bloques);
+      if (typeof api.bloqueSugerencias === 'function') {
+        try {
+          sugerenciasBloques = await llamar(api.bloqueSugerencias(fuenteId, proyecto.id));
+        } catch { /* se conservan las sugerencias de los bloques ya cargados */ }
+      }
+      if (!listaBloquesReg.isConnected) return;
       listaBloquesReg.innerHTML = '';
       if (bloques.length) {
         const ok = await asegurarModulos();
@@ -1668,24 +1803,55 @@ function fabricarModuloEntidad(def) {
       }
       aplicarOrdenBloques();
     }).catch((err) => {
+      if (!listaBloquesReg.isConnected) return;
       listaBloquesReg.innerHTML = '';
       listaBloquesReg.appendChild(el('div', 'vacio error', `No se pudieron cargar los bloques: ${err.message}`));
-    });
+    }).finally(() => { if (liberarCargaInicial) liberarCargaInicial(); });
   }
 
   function crearTarjetaCuaderno(datos, indice, { nuevo = false, abrirEditor = false } = {}) {
+    const esResumen = datos._resumen === true;
     const estado = {
       id: datos.id,
       fojas: Array.isArray(datos.fojas) ? datos.fojas.slice() : [],
-      contenidoGuardado: datos.contenido || '',
+      contenidoGuardado: esResumen ? '' : (datos.contenido || ''),
       fojasGuardadas: Array.isArray(datos.fojas) ? datos.fojas.slice() : [],
-      editando: nuevo || abrirEditor,
+      contenidoCargado: !esResumen || Boolean(nuevo),
+      editando: Boolean(nuevo),
+      abrirAlCargar: Boolean(abrirEditor && !nuevo),
       numerando: false,
       sucio: false,
     };
     let quitarTarea = null;
+    let cargaContenidoPromesa = null;
+
+    async function asegurarContenido() {
+      if (estado.contenidoCargado) return true;
+      if (cargaContenidoPromesa) return cargaContenidoPromesa;
+      if (!window.api || typeof window.api.cuadernoObtener !== 'function') {
+        aviso('Esta versión no puede cargar la transcripción bajo demanda.', 'error');
+        return false;
+      }
+      cargaContenidoPromesa = (async () => {
+        try {
+          const fila = await llamar(window.api.cuadernoObtener(estado.id, proyecto.id));
+          if (!tarjeta.isConnected) return false;
+          estado.contenidoGuardado = fila.contenido || '';
+          estado.fojas = Array.isArray(fila.fojas) ? fila.fojas.slice() : [];
+          estado.fojasGuardadas = estado.fojas.slice();
+          estado.contenidoCargado = true;
+          texto.value = estado.contenidoGuardado;
+          return true;
+        } catch (err) {
+          aviso(`No se pudo cargar el cuaderno: ${err.message}`, 'error');
+          return false;
+        }
+      })().finally(() => { cargaContenidoPromesa = null; });
+      return cargaContenidoPromesa;
+    }
 
     async function guardarCuaderno() {
+      if (!await asegurarContenido()) return false;
       await llamar(api.cuadernoActualizar(estado.id, {
         contenido: texto.value,
         fojas: estado.fojas,
@@ -1713,9 +1879,11 @@ function fabricarModuloEntidad(def) {
     numeros.hidden = true;
     const texto = el('textarea', 'entrada cuaderno-texto');
     texto.rows = 8;
-    texto.value = datos.contenido || '';
+    texto.value = estado.contenidoCargado ? estado.contenidoGuardado : '';
     texto.readOnly = !estado.editando;
-    texto.placeholder = 'Transcribe o anota aquí el contenido de la fuente…';
+    texto.placeholder = esResumen
+      ? 'Pulsa EDITAR para cargar la transcripción…'
+      : 'Transcribe o anota aquí el contenido de la fuente…';
     editor.append(numeros, texto);
     tarjeta.appendChild(editor);
 
@@ -1830,9 +1998,18 @@ function fabricarModuloEntidad(def) {
     });
 
     btnEditar.addEventListener('click', () => {
-      estado.editando = true;
-      actualizarBotones();
-      texto.focus();
+      if (estado.contenidoCargado) {
+        estado.editando = true;
+        actualizarBotones();
+        texto.focus();
+        return;
+      }
+      asegurarContenido().then((ok) => {
+        if (!ok || !tarjeta.isConnected) return;
+        estado.editando = true;
+        actualizarBotones();
+        texto.focus();
+      }, () => {});
     });
 
     btnEliminar.addEventListener('click', async () => {
@@ -1849,7 +2026,17 @@ function fabricarModuloEntidad(def) {
     });
 
     actualizarBotones();
-    if (nuevo) setTimeout(() => texto.focus(), 30);
+    if (nuevo) {
+      setTimeout(() => texto.focus(), 30);
+    } else if (estado.abrirAlCargar) {
+      setTimeout(async () => {
+        if (await asegurarContenido()) {
+          estado.editando = true;
+          actualizarBotones();
+          texto.focus();
+        }
+      }, 0);
+    }
     return tarjeta;
   }
 
@@ -1907,6 +2094,7 @@ function fabricarModuloEntidad(def) {
     bloque.appendChild(listaCoincidencias);
 
     let coincidencias = [];
+    let registrandoCoincidencia = false;
     const nombres = new Map(candidatos.map((c) => [c.id, def.etiqueta(c)]));
 
     function pintarCoincidencias() {
@@ -1944,8 +2132,17 @@ function fabricarModuloEntidad(def) {
 
     try {
       coincidencias = await llamar(api.coincidenciaListar(proyecto.id));
-    } catch {
+    } catch (err) {
       coincidencias = [];
+      if (!bloque.isConnected) return;
+      listaCoincidencias.innerHTML = '';
+      const fallo = el('div', 'vacio error', `No se pudieron cargar las coincidencias: ${err.message}`);
+      const btnReintentar = el('button', 'btn btn-mini', 'Reintentar');
+      btnReintentar.type = 'button';
+      btnReintentar.addEventListener('click', () => montarFusiones(fila));
+      fallo.appendChild(btnReintentar);
+      listaCoincidencias.appendChild(fallo);
+      return;
     }
     if (!bloque.isConnected) return;
     pintarCoincidencias();
@@ -1957,7 +2154,9 @@ function fabricarModuloEntidad(def) {
     });
 
     btnRegistrar.addEventListener('click', async () => {
-      if (!sel.value) return;
+      if (!sel.value || registrandoCoincidencia) return;
+      registrandoCoincidencia = true;
+      btnRegistrar.disabled = true;
       try {
         await llamar(api.coincidenciaCrear({
           proyecto_id: proyecto.id,
@@ -1971,7 +2170,12 @@ function fabricarModuloEntidad(def) {
         formCoincidencia.hidden = true;
         pintarCoincidencias();
         aviso('Posible coincidencia registrada', 'exito');
-      } catch (err) { aviso(err.message, 'error'); }
+      } catch (err) {
+        aviso(err.message, 'error');
+      } finally {
+        registrandoCoincidencia = false;
+        if (btnRegistrar.isConnected) btnRegistrar.disabled = false;
+      }
     });
 
     btnFusionar.addEventListener('click', async () => {
@@ -2162,17 +2366,35 @@ function fabricarModuloEntidad(def) {
 
   async function guardarFormulario() {
     if (guardandoFicha) return false;
+    const generacionGuardado = generacionFormulario;
+    const montajeGuardado = generacionMontaje;
     guardandoFicha = true;
     const botonGuardar = refs.btnGuardar;
+    const contenedor = refs.detalle;
+    const inertPrevio = contenedor ? Boolean(contenedor.inert) : false;
     if (botonGuardar) {
       botonGuardar.disabled = true;
       botonGuardar.textContent = 'Guardando…';
     }
+    /* Mientras se guarda no se aceptan ediciones nuevas. Si el usuario abre
+       otra ficha desde la lista, la comprobación de generación evita que la
+       respuesta tardía sobrescriba el formulario actual. */
+    if (contenedor && contenedor.isConnected) {
+      if ('inert' in contenedor) contenedor.inert = true;
+      contenedor.setAttribute('aria-busy', 'true');
+    }
+    const sigueVigente = () => (
+      generacionFormulario === generacionGuardado
+      && generacionMontaje === montajeGuardado
+      && Boolean(refs.lista)
+    );
     try {
     if (relacionSucio && refs.guardarRelacionPendiente) {
       const relacionOk = await refs.guardarRelacionPendiente();
       if (!relacionOk) return false;
+      if (!sigueVigente()) return true;
     }
+    if (!sigueVigente()) return true;
     const datos = reunirValores();
     const campos = refs.camposActuales || def.campos;
     const obligatorio = campos.find((c) => c.etiqueta.includes('*'));
@@ -2194,13 +2416,24 @@ function fabricarModuloEntidad(def) {
       return false;
     }
     try {
+      const eraNuevo = modo === 'nuevo';
+      const idGuardado = eraNuevo ? null : filaActual.id;
       let fila;
-      if (modo === 'nuevo') {
+      if (eraNuevo) {
         fila = await llamar(api.entidadCrear(claveTipo(), proyecto.id, datos));
       } else {
-        fila = await llamar(api.entidadActualizar(claveTipo(), filaActual.id, datos, proyecto.id));
+        fila = await llamar(api.entidadActualizar(claveTipo(), idGuardado, datos, proyecto.id));
       }
-      const eraNuevo = modo === 'nuevo';
+      if (generacionMontaje !== montajeGuardado) return true;
+      if (!sigueVigente()) {
+        const indiceTardio = lista.findIndex((f) => f.id === fila.id);
+        if (indiceTardio >= 0) lista[indiceTardio] = fila;
+        else lista.push(fila);
+        lista.sort(compararEntidades);
+        if (refs.lista) dibujarLista();
+        notificarContadores();
+        return true;
+      }
       filaActual = fila; modo = 'editar'; sucio = false;
       invalidarCacheBloques();
       invalidarCacheEntidades();
@@ -2214,6 +2447,15 @@ function fabricarModuloEntidad(def) {
           aviso(`La ficha se guardó, pero no se pudieron sincronizar sus relaciones: ${err.message}`, 'error');
         }
       }
+      if (!sigueVigente()) {
+        const indiceTardio = lista.findIndex((f) => f.id === fila.id);
+        if (indiceTardio >= 0) lista[indiceTardio] = fila;
+        else lista.push(fila);
+        lista.sort(compararEntidades);
+        if (refs.lista) dibujarLista();
+        notificarContadores();
+        return true;
+      }
       const conservarEditor = !eraNuevo && hayCambiosExternos();
       const indice = lista.findIndex((f) => f.id === fila.id);
       if (indice >= 0) lista[indice] = fila; else lista.push(fila);
@@ -2225,9 +2467,9 @@ function fabricarModuloEntidad(def) {
         if (titulo) titulo.textContent = def.etiqueta(fila);
         if (def.relaciones) prepararRelaciones();
       }
-      // restaurar la selección visual
+      // restaurar la selección visual por identificador, no por título (homónimos)
       $$('.ent-item', refs.lista).forEach((it) => it.classList.remove('seleccionado'));
-      const item = [...refs.lista.children].find((it) => it.querySelector('.ent-item-titulo')?.textContent === def.etiqueta(fila));
+      const item = [...refs.lista.children].find((it) => it.dataset.id === String(fila.id));
       if (item) item.classList.add('seleccionado');
       aviso(`${NOMBRE_TIPO[claveTipo()]} guardado`, 'exito');
       notificarContadores();
@@ -2238,6 +2480,10 @@ function fabricarModuloEntidad(def) {
     }
     } finally {
       guardandoFicha = false;
+      if (contenedor && contenedor.isConnected) {
+        if ('inert' in contenedor) contenedor.inert = inertPrevio;
+        contenedor.removeAttribute('aria-busy');
+      }
       if (botonGuardar && botonGuardar.isConnected) {
         botonGuardar.disabled = false;
         botonGuardar.textContent = 'Guardar';
@@ -2258,21 +2504,35 @@ function fabricarModuloEntidad(def) {
     if (claveTipo() !== 'persona') return;
     const ocupacion = String(datos.ocupacion || '').trim();
     const iid = Number(datos.institucion_id) || null;
-    if (!ocupacion || !iid) return;
+    const objetivo = ocupacion && iid ? iid : null;
     const propias = await llamar(api.relacionListarDeEntidad(proyecto.id, 'persona', fila.id));
-    const yaTiene = propias.some((r) =>
-      r.origen_tipo === 'persona' && r.origen_id === fila.id &&
-      r.destino_tipo === 'institucion' && r.destino_id === iid &&
-      r.tipo === 'Miembro');
-    if (yaTiene) return;
+    const miembros = propias.filter((r) =>
+      r.tipo === 'Miembro'
+      && r.origen_tipo === 'persona' && Number(r.origen_id) === Number(fila.id)
+      && r.destino_tipo === 'institucion');
+    const marcadas = miembros.filter((r) => r.regla === 'ficha:membresia');
+    /* Las marcadas son las que creó esta sincronización. Si no hay marca
+       (datos antiguos) solo se limpia cuando es la única relación Miembro,
+       para no borrar membresías manuales múltiples. */
+    const candidatas = marcadas.length ? marcadas : (miembros.length === 1 ? miembros : []);
+    let yaTiene = false;
+    for (const relacion of candidatas) {
+      if (objetivo && Number(relacion.destino_id) === objetivo) {
+        yaTiene = true;
+        continue;
+      }
+      try { await llamar(api.relacionEliminar(relacion.id, proyecto.id)); } catch { /* ya no existe */ }
+    }
+    if (!objetivo || yaTiene) return;
     try {
       await llamar(api.relacionCrear({
         proyecto_id: proyecto.id,
         origen_tipo: 'persona',
         origen_id: fila.id,
         destino_tipo: 'institucion',
-        destino_id: iid,
+        destino_id: objetivo,
         tipo: 'Miembro',
+        regla: 'ficha:membresia',
         fuentes: [],
       }, proyecto.id));
       aviso('Relación MANUAL «Persona · Miembro · Institución» creada', 'exito');
@@ -2286,18 +2546,28 @@ function fabricarModuloEntidad(def) {
   async function sincronizarSede(fila, datos) {
     if (claveTipo() !== 'institucion') return;
     const lid = Number(datos.lugar_id) || null;
-    if (!lid) return;
     const propias = await llamar(api.relacionListarDeEntidad(proyecto.id, 'institucion', fila.id));
-    const yaTiene = propias.some((r) => {
-      if (r.tipo !== 'Sede') return false;
-      const valida = r.origen_tipo === 'lugar' && r.origen_id === lid
-        && r.destino_tipo === 'institucion' && r.destino_id === fila.id;
-      /* Relaciones antiguas creadas en el sentido inverso: no duplicar. */
-      const heredada = r.origen_tipo === 'institucion' && r.origen_id === fila.id
-        && r.destino_tipo === 'lugar' && r.destino_id === lid;
-      return valida || heredada;
-    });
-    if (yaTiene) return;
+    const sede = propias.filter((r) => r.tipo === 'Sede' && (
+      (r.destino_tipo === 'institucion' && Number(r.destino_id) === Number(fila.id))
+      || (r.origen_tipo === 'institucion' && Number(r.origen_id) === Number(fila.id))
+    ));
+    const marcadas = sede.filter((r) => r.regla === 'ficha:sede');
+    const candidatas = marcadas.length ? marcadas : (sede.length === 1 ? sede : []);
+    let yaTiene = false;
+    for (const relacion of candidatas) {
+      const valida = Boolean(lid)
+        && relacion.origen_tipo === 'lugar' && Number(relacion.origen_id) === lid
+        && relacion.destino_tipo === 'institucion' && Number(relacion.destino_id) === Number(fila.id);
+      const heredada = Boolean(lid)
+        && relacion.origen_tipo === 'institucion' && Number(relacion.origen_id) === Number(fila.id)
+        && relacion.destino_tipo === 'lugar' && Number(relacion.destino_id) === lid;
+      if (valida || heredada) {
+        yaTiene = true;
+        continue;
+      }
+      try { await llamar(api.relacionEliminar(relacion.id, proyecto.id)); } catch { /* ya no existe */ }
+    }
+    if (!lid || yaTiene) return;
     try {
       await llamar(api.relacionCrear({
         proyecto_id: proyecto.id,
@@ -2306,6 +2576,7 @@ function fabricarModuloEntidad(def) {
         destino_tipo: 'institucion',
         destino_id: fila.id,
         tipo: 'Sede',
+        regla: 'ficha:sede',
         fuentes: [],
       }, proyecto.id));
       aviso('Relación MANUAL «Lugar · Sede · Institución» creada', 'exito');
@@ -2319,25 +2590,35 @@ function fabricarModuloEntidad(def) {
   async function sincronizarPropietario(fila, datos) {
     if (claveTipo() !== 'patrimonio') return;
     const nombre = String(datos.propietario || '').trim();
-    if (!nombre) return;
     const normalizar = (v) => String(v || '').trim().toLocaleLowerCase('es');
     const buscar = (tipo) => {
       const lista = cacheReferencias[tipo] || [];
       return lista.find((f) => etiquetaEntidad(tipo, f) === nombre)
         || lista.find((f) => normalizar(etiquetaEntidad(tipo, f)) === normalizar(nombre));
     };
-    const persona = buscar('persona');
-    const institucion = persona ? null : buscar('institucion');
+    const persona = nombre ? buscar('persona') : null;
+    const institucion = persona ? null : (nombre ? buscar('institucion') : null);
     const propietario = persona
       ? { tipo: 'persona', fila: persona }
       : (institucion ? { tipo: 'institucion', fila: institucion } : null);
-    if (!propietario) return;
     const relaciones = await llamar(api.relacionListarDeEntidad(proyecto.id, 'patrimonio', fila.id));
-    const yaTiene = relaciones.some((r) =>
-      r.origen_tipo === propietario.tipo && r.origen_id === propietario.fila.id &&
-      r.destino_tipo === 'patrimonio' && r.destino_id === fila.id &&
-      r.tipo === 'Propietario');
-    if (yaTiene) return;
+    const propias = relaciones.filter((r) =>
+      r.tipo === 'Propietario'
+      && r.destino_tipo === 'patrimonio' && Number(r.destino_id) === Number(fila.id));
+    const marcadas = propias.filter((r) => r.regla === 'ficha:propietario');
+    const candidatas = marcadas.length ? marcadas : (propias.length === 1 ? propias : []);
+    let yaTiene = false;
+    for (const relacion of candidatas) {
+      const coincide = Boolean(propietario)
+        && relacion.origen_tipo === propietario.tipo
+        && Number(relacion.origen_id) === Number(propietario.fila.id);
+      if (coincide) {
+        yaTiene = true;
+        continue;
+      }
+      try { await llamar(api.relacionEliminar(relacion.id, proyecto.id)); } catch { /* ya no existe */ }
+    }
+    if (!propietario || yaTiene) return;
     try {
       await llamar(api.relacionCrear({
         proyecto_id: proyecto.id,
@@ -2346,6 +2627,7 @@ function fabricarModuloEntidad(def) {
         destino_tipo: 'patrimonio',
         destino_id: fila.id,
         tipo: 'Propietario',
+        regla: 'ficha:propietario',
         fuentes: [],
       }, proyecto.id));
       aviso(`Relación MANUAL «${NOMBRE_TIPO[propietario.tipo]} · Propietario · Patrimonio» creada`, 'exito');
@@ -2439,8 +2721,11 @@ function fabricarModuloEntidad(def) {
       item.title = 'Clic para editar esta relación';
       const texto = el('div', 'relacion-texto');
       const lineaTipo = el('div', 'relacion-tipo');
+      const flecha = typeof window.flechaRelacion === 'function'
+        ? window.flechaRelacion(r.tipo)
+        : '→';
       lineaTipo.appendChild(el('span', 'relacion-tipo-texto',
-        `${r.origen_nombre} → ${r.destino_nombre} · ${r.tipo}`));
+        `${r.origen_nombre} ${flecha} ${r.destino_nombre} · ${r.tipo}`));
       if (typeof relacionPermitida === 'function'
         && !relacionPermitida(r.tipo, r.origen_tipo, r.destino_tipo)) {
         item.classList.add('relacion-fuera-taxonomia');
@@ -3080,7 +3365,10 @@ function fabricarModuloEntidad(def) {
       }
       actualizarPistaRestriccion();
       refs.pistaEdicion.hidden = false;
-      refs.pistaEdicion.textContent = `Editando relación (${r.procedencia || 'MANUAL'}): ${r.origen_nombre} → ${r.destino_nombre} (puedes cambiar el otro extremo). `;
+      const flecha = typeof window.flechaRelacion === 'function'
+        ? window.flechaRelacion(r.tipo)
+        : '→';
+      refs.pistaEdicion.textContent = `Editando relación (${r.procedencia || 'MANUAL'}): ${r.origen_nombre} ${flecha} ${r.destino_nombre} (puedes cambiar el otro extremo). `;
       refs.pistaEdicion.appendChild(refs.btnCancelarEdicion);
       refs.btnCancelarEdicion.hidden = false;
       refs.btnGuardarRelacion.disabled = false;
@@ -3160,6 +3448,7 @@ function fabricarModuloEntidad(def) {
     desmontar() {
       generacionMontaje++;
       generacionRelaciones++;
+      generacionSeleccion++;
       if (temporizadorBusqueda) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = null; }
       if (temporizadorSnapshot) { clearTimeout(temporizadorSnapshot); temporizadorSnapshot = null; }
       tareasPendientes.clear();

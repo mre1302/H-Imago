@@ -168,8 +168,9 @@ test('Búsqueda general: entidades, relaciones, bloques, transcripciones y coinc
     assert.equal(aislado.resultados.entidades[0].id, otroLugar.id);
 
     await db.crearEntidad('lugar', proyecto.id, { nombre: 'Cartagena' });
-    const refrescado = await db.buscarGlobal(proyecto.id, { texto: 'cartagena', forzar: true });
+    const refrescado = await db.buscarGlobal(proyecto.id, { texto: 'cartagena' });
     assert.equal(refrescado.resultados.entidades.length, 1);
+    assert.equal(refrescado.resultados.entidades[0].titulo, 'Cartagena');
   } finally {
     await limpiar(ruta);
   }

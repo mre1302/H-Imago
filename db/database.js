@@ -57,7 +57,10 @@ function validarProyecto({ nombre, creador, descripcion }) {
   if (descripcion != null && typeof descripcion !== 'string') {
     throw new Error('La descripción del proyecto no es válida.');
   }
-  if (descripcion && String(descripcion).length > 65535) throw new Error('La descripción es demasiado larga (máximo 65535 caracteres).');
+  if (descripcion) {
+    if (String(descripcion).length > 65535) throw new Error('La descripción es demasiado larga (máximo 65535 caracteres).');
+    comprobarBytes(String(descripcion), LIMITE_TEXTO_BYTES, 'descripción');
+  }
 }
 
 
@@ -83,6 +86,34 @@ const CACHE_BUSQUEDA_MS = 60000;
 const LIMITE_RESULTADOS_BUSQUEDA = 60;
 const LIMITE_CONTENIDO_CUADERNO = 20 * 1024 * 1024;
 const LIMITE_DATOS_BLOQUE = 10 * 1024 * 1024;
+const LIMITE_TEXTO_BYTES = 65000;
+const LIMITE_TRANSCRIPCION_BYTES = 20 * 1024 * 1024;
+const ANIO_MINIMO = -5000;
+const ANIO_MAXIMO = 3000;
+
+function validarAnio(valor, etiqueta = 'año') {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const numero = Number(valor);
+  if (!Number.isInteger(numero) || numero < ANIO_MINIMO || numero > ANIO_MAXIMO) {
+    throw new Error(
+      `El ${etiqueta} debe ser un número entero entre ${ANIO_MINIMO} y ${ANIO_MAXIMO}.`
+    );
+  }
+  return numero;
+}
+
+function comprobarRangoAnios(anioInicio, anioFin) {
+  if (anioInicio != null && anioFin != null && anioInicio > anioFin) {
+    throw new Error('El año inicial no puede ser posterior al año final.');
+  }
+}
+
+function comprobarBytes(valor, maximo, etiqueta) {
+  if (typeof valor !== 'string') return;
+  if (Buffer.byteLength(valor, 'utf8') > maximo) {
+    throw new Error(`El campo «${etiqueta}» es demasiado grande.`);
+  }
+}
 
 function valorTextoBusqueda(valor) {
   if (valor === null || valor === undefined) return '';
@@ -99,22 +130,6 @@ function juntarPartesBusqueda(partes) {
 function rangoAniosBusqueda(inicio, fin) {
   if (inicio == null && fin == null) return '';
   return `${inicio ?? '¿?'} – ${fin ?? '¿?'}`;
-}
-
-/** Año orientativo a partir de una fecha exacta o de su modelo estructurado. */
-function anioDeFechaExacta(texto, metaCrudo, ultimo = false) {
-  if (metaCrudo) {
-    try {
-      const meta = typeof metaCrudo === 'string' ? JSON.parse(metaCrudo) : metaCrudo;
-      const anio = Number(meta && meta.anio);
-      if (Number.isInteger(anio)) return anio;
-    } catch { /* sin modelo utilizable */ }
-  }
-  const coincidencias = [...String(texto || '').matchAll(/(?:^|\D)(\d{3,4})(?=\D|$)/g)];
-  if (!coincidencias.length) return null;
-  const elegida = ultimo ? coincidencias[coincidencias.length - 1] : coincidencias[0];
-  const anio = Number(elegida[1]);
-  return Number.isFinite(anio) ? anio : null;
 }
 
 function crearItemBusqueda({ tipo, id, titulo, subtitulo, texto, publico }) {
@@ -141,6 +156,8 @@ class BaseDatos {
     this.generacionConexion = 0;
     this.cacheBusqueda = new Map();
     this.corpusBusquedaPendiente = new Map();
+    this.generacionBusqueda = new Map();
+    this.conectando = null;
   }
 
   estaConectado() {
@@ -223,6 +240,18 @@ class BaseDatos {
   }
 
   async conectar(cfg) {
+    /* Serializa los cambios de conexión: dos llamadas concurrentes podían
+       cerrar/crear pools a la vez y dejar la app usando el pool equivocado. */
+    if (this.conectando) return this.conectando;
+    this.conectando = this._conectar(cfg);
+    try {
+      return await this.conectando;
+    } finally {
+      this.conectando = null;
+    }
+  }
+
+  async _conectar(cfg) {
     if (this.pool) {
       try { await this.pool.end(); } catch { /* ya cerrada */ }
     }
@@ -230,6 +259,7 @@ class BaseDatos {
     this.generacionConexion++;
     this.cacheBusqueda.clear();
     this.corpusBusquedaPendiente.clear();
+    this.generacionBusqueda.clear();
 
     if (!this.esMySQL(cfg)) {
       this.motor = 'sqlite';
@@ -263,7 +293,12 @@ class BaseDatos {
       flags: ['FOUND_ROWS'],
     });
     this.pool.on('connection', (conexion) => {
-      conexion.promise().query("SET time_zone = '+00:00'").catch(() => { /* sin permiso */ });
+      /* Se encola en la propia conexión antes de que el pool la entregue;
+         si falla, no se oculta: una zona horaria distinta cambia las fechas
+         de creación/modificación de los proyectos. */
+      conexion.query("SET time_zone = '+00:00'", (err) => {
+        if (err) console.warn('[mysql] No se pudo fijar time_zone a UTC:', err.message);
+      });
     });
     this.config = cfg;
     try {
@@ -310,15 +345,27 @@ class BaseDatos {
         if (limite && v.length > limite) {
           throw new Error(`El campo «${campo}» es demasiado largo (máximo ${limite} caracteres).`);
         }
+        if (campo === 'transcripcion') {
+          comprobarBytes(v, LIMITE_TRANSCRIPCION_BYTES, campo);
+        } else if (campo === 'notas' || campo === 'descripcion' || /_meta$/.test(campo)) {
+          comprobarBytes(v, LIMITE_TEXTO_BYTES, campo);
+        }
       }
       if (v !== null && def.numericos.includes(campo)) {
-        const n = Number(v);
-        v = Number.isFinite(n) ? n : null;
-        if (v !== null && def.tabla === 'lugares' && campo === 'latitud' && (v < -90 || v > 90)) {
-          throw new Error('La latitud debe estar entre -90 y 90.');
-        }
-        if (v !== null && def.tabla === 'lugares' && campo === 'longitud' && (v < -180 || v > 180)) {
-          throw new Error('La longitud debe estar entre -180 y 180.');
+        if (/^anio/i.test(campo)) {
+          v = validarAnio(v, campo);
+        } else {
+          const n = Number(v);
+          if (!Number.isFinite(n)) {
+            throw new Error(`El campo «${campo}» debe ser numérico.`);
+          }
+          v = n;
+          if (def.tabla === 'lugares' && campo === 'latitud' && (v < -90 || v > 90)) {
+            throw new Error('La latitud debe estar entre -90 y 90.');
+          }
+          if (def.tabla === 'lugares' && campo === 'longitud' && (v < -180 || v > 180)) {
+            throw new Error('La longitud debe estar entre -180 y 180.');
+          }
         }
       }
       salida[campo] = v;
@@ -341,6 +388,15 @@ class BaseDatos {
     await ejecutor.query(
       'UPDATE proyectos SET fecha_modificacion = CURRENT_TIMESTAMP WHERE id = ?',
       [proyectoId]
+    );
+    /* Cualquier escritura del proyecto invalida su corpus de búsqueda. Antes
+       se podían devolver resultados obsoletos hasta 60 s. */
+    const claveProyecto = Number(proyectoId);
+    this.cacheBusqueda.delete(claveProyecto);
+    this.corpusBusquedaPendiente.delete(claveProyecto);
+    this.generacionBusqueda.set(
+      claveProyecto,
+      (this.generacionBusqueda.get(claveProyecto) || 0) + 1
     );
   }
 
@@ -513,6 +569,9 @@ class BaseDatos {
 
   async crearProyecto({ nombre, descripcion, creador }, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.crearProyecto({ nombre, descripcion, creador }, conexion));
+    }
     validarProyecto({ nombre, creador, descripcion });
     const [res] = await ejecutor.query(
       'INSERT INTO proyectos (nombre, descripcion, creador, uuid, fecha_creacion, fecha_modificacion) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
@@ -592,8 +651,9 @@ class BaseDatos {
 
   async actualizarProyecto(id, { nombre, descripcion, creador }) {
     await this.listo();
+    return this.transaccion(async (ejecutor) => {
     validarProyecto({ nombre, creador, descripcion });
-    const [res] = await this.pool.query(
+    const [res] = await ejecutor.query(
       'UPDATE proyectos SET nombre = ?, descripcion = ?, creador = ?, fecha_modificacion = CURRENT_TIMESTAMP WHERE id = ?',
       [
         String(nombre).trim(),
@@ -602,10 +662,11 @@ class BaseDatos {
         id,
       ]
     );
-    if (!res.affectedRows && !(await this.existeRegistro('proyectos', id))) {
+    if (!res.affectedRows && !(await this.existeRegistro('proyectos', id, ejecutor))) {
       throw new Error('El proyecto no existe o no se pudo actualizar.');
     }
-    return this.obtenerProyecto(id);
+    return this.obtenerProyecto(id, ejecutor);
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -737,6 +798,9 @@ class BaseDatos {
 
   async actualizarEntidad(tipo, id, datos, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.actualizarEntidad(tipo, id, datos, conexion));
+    }
     const def = this.def(tipo);
     const valores = this.sanea(def, datos);
     const [actuales] = await ejecutor.query(`SELECT * FROM ${def.tabla} WHERE id = ?`, [id]);
@@ -1007,6 +1071,12 @@ class BaseDatos {
 
       await conexion.query('UPDATE relaciones SET origen_id = ? WHERE origen_tipo = ? AND origen_id = ?', [supId, tipo, absId]);
       await conexion.query('UPDATE relaciones SET destino_id = ? WHERE destino_tipo = ? AND destino_id = ?', [supId, tipo, absId]);
+      /* A→B + B→A se convierten en A→A al fusionar B en A. La API manual
+         nunca permite auto-relaciones, así que se eliminan también aquí. */
+      await conexion.query(
+        'DELETE FROM relaciones WHERE origen_tipo = ? AND origen_id = ? AND destino_tipo = ? AND destino_id = ?',
+        [tipo, supId, tipo, supId]
+      );
 
       if (tipo === 'lugar') {
         await conexion.query('UPDATE instituciones SET lugar_id = ? WHERE lugar_id = ?', [supId, absId]);
@@ -1078,8 +1148,11 @@ class BaseDatos {
     return filas;
   }
 
-  async crearCoincidencia(datos) {
+  async crearCoincidencia(datos, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.crearCoincidencia(datos, conexion));
+    }
     if (!PREFIJOS_ID[datos.tipo]) throw new Error('Tipo de entidad no válido para coincidencias.');
     if (datos.notas != null && typeof datos.notas !== 'string') {
       throw new Error('Las notas de la coincidencia no son válidas.');
@@ -1087,27 +1160,38 @@ class BaseDatos {
     if (datos.notas && String(datos.notas).length > 65535) {
       throw new Error('Las notas de la coincidencia son demasiado largas (máximo 65535 caracteres).');
     }
+    if (datos.notas) comprobarBytes(String(datos.notas), LIMITE_TEXTO_BYTES, 'notas');
     const a = Number(datos.entidad_a);
     const b = Number(datos.entidad_b);
     if (!a || !b || a === b) throw new Error('Selecciona dos fichas distintas.');
     const def = this.def(datos.tipo);
-    const [entidades] = await this.pool.query(
+    const [entidades] = await ejecutor.query(
       `SELECT id FROM ${def.tabla} WHERE proyecto_id = ? AND id IN (?, ?)`,
       [datos.proyecto_id, a, b]
     );
     if (entidades.length !== 2) throw new Error('Las fichas no pertenecen a este proyecto.');
-    const [existente] = await this.pool.query(
+    const [existente] = await ejecutor.query(
       `SELECT id FROM coincidencias
        WHERE proyecto_id = ? AND tipo = ?
          AND ((entidad_a = ? AND entidad_b = ?) OR (entidad_a = ? AND entidad_b = ?))`,
       [datos.proyecto_id, datos.tipo, a, b, b, a]
     );
     if (existente.length) throw new Error('Ya existe una coincidencia registrada entre estas dos fichas.');
-    const [res] = await this.pool.query(
-      'INSERT INTO coincidencias (proyecto_id, tipo, entidad_a, entidad_b, notas) VALUES (?, ?, ?, ?, ?)',
-      [datos.proyecto_id, datos.tipo, a, b, datos.notas || null]
-    );
-    await this.tocarProyecto(datos.proyecto_id);
+    const menor = Math.min(a, b);
+    const mayor = Math.max(a, b);
+    let res;
+    try {
+      [res] = await ejecutor.query(
+        'INSERT INTO coincidencias (proyecto_id, tipo, entidad_a, entidad_b, notas) VALUES (?, ?, ?, ?, ?)',
+        [datos.proyecto_id, datos.tipo, menor, mayor, datos.notas || null]
+      );
+    } catch (err) {
+      if (err && (err.code === 'ER_DUP_ENTRY' || /UNIQUE constraint failed/i.test(err.message))) {
+        throw new Error('Ya existe una coincidencia registrada entre estas dos fichas.');
+      }
+      throw err;
+    }
+    await this.tocarProyecto(datos.proyecto_id, ejecutor);
     return res.insertId;
   }
 
@@ -1238,17 +1322,16 @@ class BaseDatos {
     await this.validarExtremos(datos, ejecutor);
     const fuentes = this.normalizarFuentes(datos.fuentes);
     await this.validarFuentes(fuentes, datos.proyecto_id, ejecutor);
-    const anioDe = (v) => {
-      if (v === null || v === undefined || v === '') return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? Math.trunc(n) : null;
-    };
+    const anioDe = (v) => validarAnio(v, 'año');
     const lugarDe = (v) => {
       const n = Number(v);
       return v !== null && v !== undefined && v !== '' && Number.isFinite(n) && n > 0 ? n : null;
     };
     const lugarInicio = lugarDe(datos.lugar_inicio);
     const lugarFin = lugarDe(datos.lugar_fin);
+    const anioInicio = anioDe(datos.anio_inicio);
+    const anioFin = anioDe(datos.anio_fin);
+    comprobarRangoAnios(anioInicio, anioFin);
     if (lugarInicio != null) {
       await this.validarReferenciaEntidad('lugar', lugarInicio, datos.proyecto_id, ejecutor);
     }
@@ -1276,26 +1359,40 @@ class BaseDatos {
     if (datos.notas != null && typeof datos.notas !== 'string') {
       throw new Error('Las notas de la relación no son válidas.');
     }
+    if (datos.notas) comprobarBytes(datos.notas, LIMITE_TEXTO_BYTES, 'notas');
+    if (datos.regla != null && typeof datos.regla !== 'string') {
+      throw new Error('La regla de la relación no es válida.');
+    }
+    if (datos.regla && String(datos.regla).length > 160) {
+      throw new Error('La regla de la relación es demasiado larga (máximo 160 caracteres).');
+    }
+    for (const campo of ['fecha_exacta_inicio_meta', 'fecha_exacta_fin_meta']) {
+      const valor = datos[campo];
+      if (valor == null) continue;
+      if (typeof valor !== 'string') throw new Error(`El campo «${campo}» no es válido.`);
+      comprobarBytes(valor, LIMITE_TEXTO_BYTES, campo);
+    }
     const [res] = await ejecutor.query(
       `INSERT INTO relaciones
         (proyecto_id, origen_tipo, origen_id, destino_tipo, destino_id, tipo,
          anio_inicio, fecha_exacta_inicio, fecha_exacta_inicio_meta, lugar_inicio,
-         anio_fin, fecha_exacta_fin, fecha_exacta_fin_meta, lugar_fin, notas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         anio_fin, fecha_exacta_fin, fecha_exacta_fin_meta, lugar_fin, notas, regla)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         datos.proyecto_id,
         datos.origen_tipo, Number(datos.origen_id),
         datos.destino_tipo, Number(datos.destino_id),
         tipoRelacion,
-        anioDe(datos.anio_inicio),
+        anioInicio,
         datos.fecha_exacta_inicio || null,
         datos.fecha_exacta_inicio_meta || null,
         lugarInicio,
-        anioDe(datos.anio_fin),
+        anioFin,
         datos.fecha_exacta_fin || null,
         datos.fecha_exacta_fin_meta || null,
         lugarFin,
         datos.notas || null,
+        datos.regla || null,
       ]
     );
     if (fuentes.length) {
@@ -1399,17 +1496,16 @@ class BaseDatos {
         destino_id: destinoId,
       }, ejecutor);
     }
-    const anioDe = (v) => {
-      if (v === null || v === undefined || v === '') return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? Math.trunc(n) : null;
-    };
+    const anioDe = (v) => validarAnio(v, 'año');
     const lugarDe = (v) => {
       const n = Number(v);
       return v !== null && v !== undefined && v !== '' && Number.isFinite(n) && n > 0 ? n : null;
     };
     const lugarInicio = 'lugar_inicio' in datos ? lugarDe(datos.lugar_inicio) : actual.lugar_inicio;
     const lugarFin = 'lugar_fin' in datos ? lugarDe(datos.lugar_fin) : actual.lugar_fin;
+    const anioInicio = anioDe(datos.anio_inicio);
+    const anioFin = anioDe(datos.anio_fin);
+    comprobarRangoAnios(anioInicio, anioFin);
     if (lugarInicio != null) {
       await this.validarReferenciaEntidad('lugar', lugarInicio, proyectoId, ejecutor);
     }
@@ -1436,6 +1532,13 @@ class BaseDatos {
     if (datos.notas != null && typeof datos.notas !== 'string') {
       throw new Error('Las notas de la relación no son válidas.');
     }
+    if (datos.notas) comprobarBytes(datos.notas, LIMITE_TEXTO_BYTES, 'notas');
+    for (const campo of ['fecha_exacta_inicio_meta', 'fecha_exacta_fin_meta']) {
+      const valor = datos[campo];
+      if (valor == null) continue;
+      if (typeof valor !== 'string') throw new Error(`El campo «${campo}» no es válido.`);
+      comprobarBytes(valor, LIMITE_TEXTO_BYTES, campo);
+    }
     const fuentes = Array.isArray(datos.fuentes) ? this.normalizarFuentes(datos.fuentes) : null;
     if (fuentes) await this.validarFuentes(fuentes, proyectoId, ejecutor);
     await ejecutor.query(
@@ -1450,11 +1553,11 @@ class BaseDatos {
         destinoTipo,
         destinoId,
         tipo,
-        anioDe(datos.anio_inicio),
+        anioInicio,
         datos.fecha_exacta_inicio || null,
         datos.fecha_exacta_inicio_meta || null,
         lugarInicio,
-        anioDe(datos.anio_fin),
+        anioFin,
         datos.fecha_exacta_fin || null,
         datos.fecha_exacta_fin_meta || null,
         lugarFin,
@@ -1580,6 +1683,7 @@ class BaseDatos {
     const nombreBase = String(obj.proyecto.nombre || 'Proyecto importado').trim();
     const existentes = await this.listarProyectos();
     const nombre = existentes.some((p) => p.nombre === nombreBase) ? `${nombreBase} (importado)` : nombreBase;
+    let omitidosImportacionRef = null;
 
     const pid = await this.transaccion(async (ejecutor) => {
     const proyecto = await this.crearProyecto({
@@ -1627,23 +1731,31 @@ class BaseDatos {
     }
 
     const mapaBloque = {};
+    const bloquesInvalidos = new Set();
     const firmasExclusion = {};
+    const omitidosImportacion = {
+      cuadernos: 0,
+      bloques: 0,
+      relaciones: 0,
+      exclusiones: 0,
+      coincidencias: 0,
+    };
+    omitidosImportacionRef = omitidosImportacion;
     for (const c of obj.cuadernos || []) {
       const fuenteNueva = mapa.fuente[c.fuente_id];
-      if (!fuenteNueva) continue;
+      if (!fuenteNueva) { omitidosImportacion.cuadernos++; continue; }
       const nuevo = await this.crearCuaderno(fuenteNueva, ejecutor);
       await this.actualizarCuaderno(nuevo.id, {
         contenido: c.contenido || '',
         fojas: this.leerFojas(c.fojas),
       }, ejecutor);
-      if (c.posicion != null) {
-        await ejecutor.query('UPDATE cuadernos SET posicion = ? WHERE id = ?', [Number(c.posicion) || 0, nuevo.id]);
-      }
+      /* La posición se renumera por fuente al crear cada cuaderno. Conservar
+         el número del archivo podía chocar con el índice único o duplicarlo. */
     }
 
     for (const b of obj.bloques_registro || []) {
       const fuenteNueva = mapa.fuente[b.fuente_id];
-      if (!fuenteNueva) continue;
+      if (!fuenteNueva) { omitidosImportacion.bloques++; continue; }
       const nuevo = await this.crearBloqueRegistro(fuenteNueva, {
         periodo: b.periodo,
         region: b.region,
@@ -1656,6 +1768,7 @@ class BaseDatos {
           [String(b.datosCrudo || '{}'), nuevo.id]
         );
         mapaBloque[b.id] = nuevo.id;
+        bloquesInvalidos.add(nuevo.id);
         continue;
       }
       const datos = remapearDatosBloque(b.datos || {}, b.tipo, mapa);
@@ -1665,6 +1778,7 @@ class BaseDatos {
           [typeof b.datos === 'string' ? b.datos : JSON.stringify(b.datos || {}), nuevo.id]
         );
         mapaBloque[b.id] = nuevo.id;
+        bloquesInvalidos.add(nuevo.id);
         continue;
       }
       const serializadoDatos = JSON.stringify(datos);
@@ -1702,7 +1816,7 @@ class BaseDatos {
     for (const r of obj.relaciones || []) {
       const origenId = (mapa[r.origen_tipo] || {})[r.origen_id];
       const destinoId = (mapa[r.destino_tipo] || {})[r.destino_id];
-      if (!origenId || !destinoId) continue;
+      if (!origenId || !destinoId) { omitidosImportacion.relaciones++; continue; }
       const nuevoId = await this.crearRelacion({
         proyecto_id: pid,
         origen_tipo: r.origen_tipo,
@@ -1727,19 +1841,21 @@ class BaseDatos {
         ? r.procedencia : 'MANUAL';
       const bloqueNuevo = r.bloque_id != null && mapaBloque[r.bloque_id] != null
         ? mapaBloque[r.bloque_id] : null;
-      if (procedencia !== 'MANUAL' || bloqueNuevo != null || r.regla || r.firma) {
+      const regla = typeof r.regla === 'string' ? r.regla.slice(0, 160) : null;
+      const firma = typeof r.firma === 'string' ? r.firma.slice(0, 64) : null;
+      if (procedencia !== 'MANUAL' || bloqueNuevo != null || regla || firma) {
         await ejecutor.query(
           `UPDATE relaciones
            SET procedencia = ?, bloque_id = ?, regla = ?, firma = ?
            WHERE id = ?`,
-          [procedencia, bloqueNuevo, r.regla || null, r.firma || null, nuevoId]
+          [procedencia, bloqueNuevo, regla, firma, nuevoId]
         );
       }
     }
 
     for (const e of obj.exclusiones || []) {
       const bloqueNuevo = e.bloque_id != null ? mapaBloque[e.bloque_id] : null;
-      if (!bloqueNuevo) continue;
+      if (!bloqueNuevo) { omitidosImportacion.exclusiones++; continue; }
       const firmaNueva = e.firma
         ? (firmasExclusion[`${e.bloque_id}|${e.firma}`] ?? '')
         : '';
@@ -1755,16 +1871,20 @@ class BaseDatos {
     /* Los bloques se reconcilian al final: así las relaciones manuales,
        editadas y las exclusiones ya están en su sitio y no se duplican. */
     for (const bloqueNuevo of Object.values(mapaBloque)) {
+      if (bloquesInvalidos.has(bloqueNuevo)) continue;
       await relacionesAutomaticas.reconciliarBloque(this, bloqueNuevo, ejecutor);
     }
 
+    const insertarCoincidencia = this.motor === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
     for (const c of obj.coincidencias || []) {
-      const a = (mapa[c.tipo] || {})[c.entidad_a];
-      const b = (mapa[c.tipo] || {})[c.entidad_b];
-      if (!a || !b) continue;
+      const a = Number((mapa[c.tipo] || {})[c.entidad_a]);
+      const b = Number((mapa[c.tipo] || {})[c.entidad_b]);
+      if (!a || !b || a === b) { omitidosImportacion.coincidencias++; continue; }
       await ejecutor.query(
-        'INSERT INTO coincidencias (proyecto_id, tipo, entidad_a, entidad_b, notas) VALUES (?, ?, ?, ?, ?)',
-        [pid, c.tipo, a, b, c.notas || null]
+        `${insertarCoincidencia} INTO coincidencias
+          (proyecto_id, tipo, entidad_a, entidad_b, notas)
+         VALUES (?, ?, ?, ?, ?)`,
+        [pid, c.tipo, Math.min(a, b), Math.max(a, b), c.notas || null]
       );
     }
 
@@ -1774,7 +1894,9 @@ class BaseDatos {
     if (generacion !== this.generacionConexion) {
       throw new Error('La conexión cambió durante la importación. Vuelve a intentarlo.');
     }
-    return this.obtenerProyecto(pid);
+    const proyectoImportado = await this.obtenerProyecto(pid);
+    if (omitidosImportacionRef) proyectoImportado.omitidos = omitidosImportacionRef;
+    return proyectoImportado;
   }
 
   /* ---------------------------------------------------------------- */
@@ -1800,10 +1922,38 @@ class BaseDatos {
     return filas.map((fila) => ({ ...fila, fojas: this.leerFojas(fila.fojas) }));
   }
 
+  /** Listado ligero para la página de FUENTES: no transfiere transcripciones
+      completas ni crea un textarea por cuaderno en el renderer. */
+  async listarCuadernosResumen(fuenteId) {
+    await this.listo();
+    const [filas] = await this.pool.query(
+      `SELECT id, fuente_id, posicion, fojas,
+              LENGTH(contenido) AS longitud,
+              SUBSTR(contenido, 1, 240) AS vista_previa
+       FROM cuadernos WHERE fuente_id = ? ORDER BY posicion ASC, id ASC`,
+      [fuenteId]
+    );
+    return filas.map((fila) => ({
+      ...fila,
+      fojas: this.leerFojas(fila.fojas),
+      _resumen: true,
+    }));
+  }
+
+  async obtenerCuaderno(id) {
+    await this.listo();
+    const [filas] = await this.pool.query('SELECT * FROM cuadernos WHERE id = ?', [id]);
+    if (!filas.length) throw new Error('El cuaderno no existe.');
+    return { ...filas[0], fojas: this.leerFojas(filas[0].fojas) };
+  }
+
   async crearCuaderno(fuenteId, ejecutor = this.pool) {
     await this.listo();
     if (ejecutor === this.pool) {
       return this.transaccion((conexion) => this.crearCuaderno(fuenteId, conexion));
+    }
+    if (this.motor === 'mysql') {
+      await ejecutor.query('SELECT id FROM fuentes WHERE id = ? FOR UPDATE', [fuenteId]);
     }
     const [maximos] = await ejecutor.query(
       'SELECT COALESCE(MAX(posicion), 0) AS ultima FROM cuadernos WHERE fuente_id = ?',
@@ -1821,6 +1971,9 @@ class BaseDatos {
 
   async actualizarCuaderno(id, { contenido, fojas }, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.actualizarCuaderno(id, { contenido, fojas }, conexion));
+    }
     if (contenido != null && typeof contenido !== 'string') {
       throw new Error('El contenido del cuaderno no es válido.');
     }
@@ -1847,6 +2000,9 @@ class BaseDatos {
 
   async eliminarCuaderno(id, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.eliminarCuaderno(id, conexion));
+    }
     const [filas] = await ejecutor.query(
       `SELECT f.proyecto_id
        FROM cuadernos c JOIN fuentes f ON f.id = c.fuente_id
@@ -1885,8 +2041,64 @@ class BaseDatos {
     });
   }
 
+  /** Listado ligero para FUENTES: metadatos y una vista previa, sin enviar
+      el JSON completo de cada bloque al renderer. */
+  async listarBloquesResumen(fuenteId) {
+    await this.listo();
+    const valido = this.motor === 'sqlite'
+      ? "(datos IS NULL OR TRIM(datos) = '' OR (json_valid(datos) AND SUBSTR(TRIM(datos), 1, 1) = '{')) AS datos_validos"
+      : "(datos IS NULL OR TRIM(datos) = '' OR (JSON_VALID(datos) AND LEFT(TRIM(datos), 1) = '{')) AS datos_validos";
+    const [filas] = await this.pool.query(
+      `SELECT id, fuente_id, periodo, region, tipo, categoria, fecha_creacion,
+              LENGTH(datos) AS longitud,
+              SUBSTR(datos, 1, 240) AS vista_previa,
+              ${valido}
+       FROM bloques_registro WHERE fuente_id = ? ORDER BY id ASC`,
+      [fuenteId]
+    );
+    return filas.map(({ datos_validos: validoFila, ...fila }) => ({
+      ...fila,
+      _resumen: true,
+      datosInvalidos: Number(validoFila) !== 1,
+    }));
+  }
+
+  /** Datos completos para cálculos internos (autocompletados). No se envían
+      al renderer: main.js los reduce antes de devolverlos. */
+  async listarDatosBloques(fuenteId) {
+    await this.listo();
+    const [filas] = await this.pool.query(
+      'SELECT datos FROM bloques_registro WHERE fuente_id = ? ORDER BY id ASC',
+      [fuenteId]
+    );
+    return filas.map((fila) => fila.datos);
+  }
+
+  async obtenerBloqueRegistro(id) {
+    await this.listo();
+    const [filas] = await this.pool.query('SELECT * FROM bloques_registro WHERE id = ?', [id]);
+    if (!filas.length) throw new Error('El bloque de registro no existe.');
+    let datos = {};
+    let datosInvalidos = false;
+    try {
+      datos = filas[0].datos ? JSON.parse(filas[0].datos) : {};
+    } catch {
+      datos = {};
+      datosInvalidos = true;
+    }
+    if (!datosInvalidos && (!datos || typeof datos !== 'object' || Array.isArray(datos))) {
+      datosInvalidos = true;
+    }
+    return { ...filas[0], datos, datosInvalidos };
+  }
+
   async crearBloqueRegistro(fuenteId, { periodo, region, tipo, categoria }, ejecutor = this.pool) {
     await this.listo();
+    if (ejecutor === this.pool) {
+      return this.transaccion((conexion) => this.crearBloqueRegistro(fuenteId, {
+        periodo, region, tipo, categoria,
+      }, conexion));
+    }
     if (!tipo) throw new Error('El tipo de bloque es obligatorio.');
     if (String(tipo).length > 160) throw new Error('El tipo de bloque es demasiado largo (máximo 160 caracteres).');
     if (categoria && String(categoria).length > 120) throw new Error('La categoría del bloque es demasiado larga (máximo 120 caracteres).');
@@ -2298,30 +2510,50 @@ class BaseDatos {
       reutiliza mientras el usuario escribe; se fuerza su reconstrucción al
       entrar en la sección o al pulsar «Actualizar». */
   async corpusBusqueda(proyectoId, forzar = false) {
-    const guardado = this.cacheBusqueda.get(proyectoId);
-    if (!forzar && guardado && Date.now() - guardado.instante < CACHE_BUSQUEDA_MS) {
-      return guardado.corpus;
+    /* Si el proyecto se modifica mientras se construye el corpus, el
+       resultado puede llegar tarde. Se comprueba la generación y, si cambió,
+       se reconstruye en vez de devolver datos obsoletos. */
+    for (let intento = 0; intento < 3; intento++) {
+      const guardado = this.cacheBusqueda.get(proyectoId);
+      if (!forzar && guardado && Date.now() - guardado.instante < CACHE_BUSQUEDA_MS) {
+        return guardado.corpus;
+      }
+      const pendiente = this.corpusBusquedaPendiente.get(proyectoId);
+      if (pendiente) {
+        const resultado = await pendiente;
+        if (this.corpusVigente(proyectoId, resultado)) return resultado.corpus;
+        forzar = true;
+        continue;
+      }
+      const generacionConexion = this.generacionConexion;
+      const generacionProyecto = this.generacionBusqueda.get(proyectoId) || 0;
+      const promesa = this.construirCorpusBusqueda(proyectoId)
+        .then((corpus) => {
+          const resultado = { corpus, generacionConexion, generacionProyecto };
+          if (!this.corpusVigente(proyectoId, resultado)) return resultado;
+          this.cacheBusqueda.set(proyectoId, { instante: Date.now(), corpus });
+          for (const clave of [...this.cacheBusqueda.keys()]) {
+            if (this.cacheBusqueda.size <= 2) break;
+            if (clave !== proyectoId) this.cacheBusqueda.delete(clave);
+          }
+          return resultado;
+        })
+        .finally(() => {
+          if (this.corpusBusquedaPendiente.get(proyectoId) === promesa) {
+            this.corpusBusquedaPendiente.delete(proyectoId);
+          }
+        });
+      this.corpusBusquedaPendiente.set(proyectoId, promesa);
+      const resultado = await promesa;
+      if (this.corpusVigente(proyectoId, resultado)) return resultado.corpus;
+      forzar = true;
     }
-    const pendiente = this.corpusBusquedaPendiente.get(proyectoId);
-    if (pendiente) return pendiente;
-    const generacionConexion = this.generacionConexion;
-    const promesa = this.construirCorpusBusqueda(proyectoId)
-      .then((corpus) => {
-        if (generacionConexion !== this.generacionConexion) return corpus;
-        this.cacheBusqueda.set(proyectoId, { instante: Date.now(), corpus });
-        for (const clave of [...this.cacheBusqueda.keys()]) {
-          if (this.cacheBusqueda.size <= 2) break;
-          if (clave !== proyectoId) this.cacheBusqueda.delete(clave);
-        }
-        return corpus;
-      })
-      .finally(() => {
-        if (this.corpusBusquedaPendiente.get(proyectoId) === promesa) {
-          this.corpusBusquedaPendiente.delete(proyectoId);
-        }
-      });
-    this.corpusBusquedaPendiente.set(proyectoId, promesa);
-    return promesa;
+    return this.construirCorpusBusqueda(proyectoId);
+  }
+
+  corpusVigente(proyectoId, resultado) {
+    return resultado.generacionConexion === this.generacionConexion
+      && resultado.generacionProyecto === (this.generacionBusqueda.get(proyectoId) || 0);
   }
 
   async construirCorpusBusqueda(proyectoId) {
@@ -2812,7 +3044,7 @@ class BaseDatos {
     const nodos = [];
 
     const [personas] = await this.pool.query(
-      'SELECT id, nombre, apellidos, alias, anio_nacimiento, anio_defuncion, ocupacion FROM personas WHERE proyecto_id = ?',
+      'SELECT id, identificador, nombre, apellidos, genero, notas FROM personas WHERE proyecto_id = ?',
       [proyectoId]
     );
     for (const p of personas) {
@@ -2820,18 +3052,17 @@ class BaseDatos {
         id: `persona:${p.id}`,
         tipo: 'persona',
         entidadId: p.id,
-        etiqueta: [p.nombre, p.apellidos].filter(Boolean).join(' ') || p.alias || `#${p.id}`,
-        detalle: [
-          p.ocupacion,
-          [p.anio_nacimiento ?? null, p.anio_defuncion ?? null].filter((v) => v != null).join(' – '),
-        ].filter(Boolean).join(' · '),
-        anioDesde: p.anio_nacimiento ?? null,
-        anioHasta: p.anio_defuncion ?? null,
+        identificador: p.identificador || '',
+        nombre: p.nombre || '',
+        apellidos: p.apellidos || '',
+        genero: p.genero || '',
+        etiqueta: [p.nombre, p.apellidos].filter(Boolean).join(' ') || `#${p.id}`,
+        notas: p.notas || '',
       });
     }
 
     const [instituciones] = await this.pool.query(
-      'SELECT id, nombre, tipo, anio_fundacion, anio_disolucion FROM instituciones WHERE proyecto_id = ?',
+      'SELECT id, identificador, nombre, tipo, notas FROM instituciones WHERE proyecto_id = ?',
       [proyectoId]
     );
     for (const i of instituciones) {
@@ -2839,15 +3070,16 @@ class BaseDatos {
         id: `institucion:${i.id}`,
         tipo: 'institucion',
         entidadId: i.id,
-        etiqueta: i.nombre,
-        detalle: [i.tipo, [i.anio_fundacion ?? null, i.anio_disolucion ?? null].filter((v) => v != null).join(' – ')].filter(Boolean).join(' · '),
-        anioDesde: i.anio_fundacion ?? null,
-        anioHasta: i.anio_disolucion ?? null,
+        identificador: i.identificador || '',
+        nombre: i.nombre || '',
+        tipoEntidad: i.tipo || '',
+        etiqueta: i.nombre || `#${i.id}`,
+        notas: i.notas || '',
       });
     }
 
     const [lugares] = await this.pool.query(
-      'SELECT id, nombre, tipo, latitud, longitud FROM lugares WHERE proyecto_id = ?',
+      'SELECT id, identificador, nombre, tipo, notas FROM lugares WHERE proyecto_id = ?',
       [proyectoId]
     );
     for (const l of lugares) {
@@ -2855,15 +3087,16 @@ class BaseDatos {
         id: `lugar:${l.id}`,
         tipo: 'lugar',
         entidadId: l.id,
-        etiqueta: l.nombre,
-        detalle: l.tipo || '',
-        latitud: l.latitud,
-        longitud: l.longitud,
+        identificador: l.identificador || '',
+        nombre: l.nombre || '',
+        tipoEntidad: l.tipo || '',
+        etiqueta: l.nombre || `#${l.id}`,
+        notas: l.notas || '',
       });
     }
 
     const [patrimonios] = await this.pool.query(
-      'SELECT id, nombre, tipo, propietario FROM patrimonios WHERE proyecto_id = ?',
+      'SELECT id, identificador, nombre, tipo, notas FROM patrimonios WHERE proyecto_id = ?',
       [proyectoId]
     );
     for (const p of patrimonios) {
@@ -2871,18 +3104,35 @@ class BaseDatos {
         id: `patrimonio:${p.id}`,
         tipo: 'patrimonio',
         entidadId: p.id,
-        etiqueta: p.nombre,
-        detalle: [p.tipo, p.propietario].filter(Boolean).join(' · '),
+        identificador: p.identificador || '',
+        nombre: p.nombre || '',
+        tipoEntidad: p.tipo || '',
+        etiqueta: p.nombre || `#${p.id}`,
+        notas: p.notas || '',
       });
     }
 
     const [aristas] = await this.pool.query(
-      `SELECT id, origen_tipo, origen_id, destino_tipo, destino_id, tipo,
-              anio_inicio, fecha_exacta_inicio, fecha_exacta_inicio_meta,
-              anio_fin, fecha_exacta_fin, fecha_exacta_fin_meta
+      `SELECT id, origen_tipo, origen_id, destino_tipo, destino_id, tipo, procedencia, notas,
+              anio_inicio, anio_fin
        FROM relaciones WHERE proyecto_id = ?`,
       [proyectoId]
     );
+
+    const [vinculos] = await this.pool.query(
+      `SELECT rf.relacion_id, f.id, f.titulo
+       FROM relaciones_fuentes rf
+       JOIN relaciones r ON r.id = rf.relacion_id
+       JOIN fuentes f ON f.id = rf.fuente_id
+       WHERE r.proyecto_id = ?
+       ORDER BY rf.relacion_id, f.titulo`,
+      [proyectoId]
+    );
+    const fuentesPorRelacion = new Map();
+    for (const vinculo of vinculos) {
+      if (!fuentesPorRelacion.has(vinculo.relacion_id)) fuentesPorRelacion.set(vinculo.relacion_id, []);
+      fuentesPorRelacion.get(vinculo.relacion_id).push({ id: vinculo.id, titulo: vinculo.titulo });
+    }
 
     const ids = new Set(nodos.map((n) => n.id));
     const aristasValidas = aristas
@@ -2891,15 +3141,17 @@ class BaseDatos {
         origen: `${r.origen_tipo}:${r.origen_id}`,
         destino: `${r.destino_tipo}:${r.destino_id}`,
         tipo: r.tipo || 'relación',
-        fecha: [r.fecha_exacta_inicio, r.fecha_exacta_fin].filter(Boolean).join(' – ')
-          || [r.anio_inicio ?? null, r.anio_fin ?? null].filter((v) => v != null).join(' – '),
-        anioDesde: r.anio_inicio ?? anioDeFechaExacta(r.fecha_exacta_inicio, r.fecha_exacta_inicio_meta),
-        anioHasta: r.anio_fin ?? anioDeFechaExacta(r.fecha_exacta_fin, r.fecha_exacta_fin_meta, true),
+        procedencia: r.procedencia || 'MANUAL',
+        notas: r.notas || '',
+        fuentes: fuentesPorRelacion.get(r.id) || [],
+        fecha: [r.anio_inicio ?? null, r.anio_fin ?? null].filter((v) => v != null).join(' – '),
+        anioDesde: r.anio_inicio ?? null,
+        anioHasta: r.anio_fin ?? null,
       }))
       .filter((r) => ids.has(r.origen) && ids.has(r.destino));
 
-    /* Rango temporal global de la red: años de RELACIONES, incluyendo los
-       que solo constan en una fecha exacta. */
+    /* Rango temporal global de la red: solo años de RELACIONES. Las fechas
+       exactas no intervienen en la temporalidad de la vista ni de RSH. */
     let minimo = null;
     let maximo = null;
     for (const arista of aristasValidas) {

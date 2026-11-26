@@ -562,7 +562,11 @@ MODULOS.busqueda = (() => {
     return crearTarjeta({
       clase: 'busqueda-relacion',
       badge: `${categoria} · ${item.tipoRelacion}`,
-      titulo: `${item.origen.nombre} → ${item.destino.nombre}`,
+      titulo: `${item.origen.nombre} ${
+        typeof window.flechaRelacion === 'function'
+          ? window.flechaRelacion(item.tipoRelacion)
+          : '→'
+      } ${item.destino.nombre}`,
       subtitulo: [fechas, lugares, fuentes, procedencia].filter(Boolean).join(' · '),
       snippet: snippetDe(item),
       resaltados: item.resaltados,

@@ -1,7 +1,7 @@
 {
   "name": "h-imago",
   "productName": "H-IMAGO",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "Análisis de documentación histórica, prosopografía histórica y visualización de redes sociales históricas",
   "main": "main.js",
   "author": {
@@ -17,6 +17,7 @@
     "datos:ejemplo": "node scripts/semilla-ejemplo.js",
     "test": "node scripts/ejecutar-pruebas.js",
     "check": "node scripts/verificar-sintaxis.js",
+    "bench:analisis": "node scripts/benchmark-analisis-rsh.js",
     "lint": "node node_modules/eslint/bin/eslint.js .",
     "verificar": "npm run lint && npm run check && npm test",
     "dist": "node node_modules/electron-builder/cli.js --linux AppImage deb --publish never",
@@ -70,6 +71,9 @@
     },
     "asarUnpack": [
       "db/sqlite-worker.js",
+      "db/analisis-rsh-worker.js",
+      "lib/analisis-rsh/**/*",
+      "src/vendor/leiden/**/*",
       "node_modules/node-sqlite3-wasm/**/*"
     ],
     "linux": {
@@ -94,6 +98,7 @@
         }
       ],
       "icon": "build/icon.ico",
+      "signExecutable": false,
       "artifactName": "H-IMAGO-${version}-Setup.${ext}"
     },
     "mac": {
