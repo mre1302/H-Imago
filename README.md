@@ -9,7 +9,7 @@
 # H-IMAGO
 
 [![Web del proyecto](https://img.shields.io/badge/Web-mre1302.github.io%2FH--Imago-e0a92f?logo=githubpages&logoColor=white)](https://mre1302.github.io/H-Imago/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24475874.svg)](https://doi.org/10.5281/zenodo.24475874)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24589068.svg)](https://doi.org/10.5281/zenodo.24589068)
 [![Patrocinar H-IMAGO](https://img.shields.io/badge/Patrocinar-GitHub%20Sponsors-ea4aaa?logo=github&logoColor=white)](https://github.com/sponsors/mre1302)
 
 Aplicación de escritorio (Electron + SQLite/MySQL) para la **investigación prosopográfica** y la **visualización de redes sociales históricas**.
@@ -638,12 +638,12 @@ las pruebas y el flujo de trabajo.
 
 Si usas H-IMAGO en una investigación, cita el proyecto así:
 
-Ramírez-Espíndola, M. A. (2026). H-IMAGO (Versión 0.0.29) [Programa informático]. Zenodo. https://doi.org/10.5281/zenodo.24475874
+Ramírez-Espíndola, M. A. (2026). H-IMAGO (Versión 0.0.29) [Programa informático]. Zenodo. https://doi.org/10.5281/zenodo.24589068
 
 También puedes usar el botón **Cite this repository** de GitHub o consultar
 [`CITATION.cff`](CITATION.cff). El DOI del concepto, que agrupa todas las
 versiones y resuelve a la última, es `10.5281/zenodo.24475874`. El DOI específico
-de la versión 0.0.29 se publica con la release en Zenodo.
+de la versión 0.0.29 es `10.5281/zenodo.24589068`.
 
 ## Apoyar el proyecto
 
